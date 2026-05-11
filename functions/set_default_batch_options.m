@@ -56,4 +56,21 @@ try
     end
 catch
 end
+
+end
+
+function val = get_nested_field(S, path, defaultVal)
+    parts = strsplit(path, '.');
+    val = S;
+    for ii = 1:numel(parts)
+        if isstruct(val) && isfield(val, parts{ii})
+            val = val.(parts{ii});
+        else
+            val = defaultVal;
+            return;
+        end
+    end
+    if isempty(val)
+        val = defaultVal;
+    end
 end

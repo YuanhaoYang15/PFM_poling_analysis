@@ -1,15 +1,10 @@
 %% Re-pick initial centers for selected scans only
-% Create or edit:
-%   local/selected_scans.csv
 %
-% Required columns:
-%   deviceID,scanID
+% First create selected list interactively:
+%   main_select_scans_for_rework
 %
-% Optional columns:
-%   rawName,action,notes
-%
-% This script always re-picks the selected scans and overwrites their rows
-% in local/initial_centers_batch_<batch>.mat/.csv.
+% Then run:
+%   main_pick_centers_selected
 
 clear; clc; close all;
 

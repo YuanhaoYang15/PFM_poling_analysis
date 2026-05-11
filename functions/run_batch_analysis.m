@@ -1,5 +1,10 @@
 function run_batch_analysis(batchCfg, selectedOnly)
-%RUN_BATCH_ANALYSIS Analyze full batch or selected scans only.
+%RUN_BATCH_ANALYSIS Analyze a batch.
+%
+% selectedOnly = false:
+%   reuse existing processed scans, analyze missing/new scans, regenerate summaries.
+% selectedOnly = true:
+%   force reprocess selected scans, reuse existing non-selected scans, regenerate summaries.
 
 if nargin < 2
     selectedOnly = false;
@@ -22,7 +27,7 @@ fprintf('Scans:   %d\n', height(meta.scans));
 if selectedOnly
     fprintf('Mode: selected scans only (%d selected rows)\n', height(selectedTable));
 else
-    fprintf('Mode: incremental full batch\n');
+    fprintf('Mode: incremental batch analysis\n');
 end
 fprintf('========================================\n\n');
 
@@ -46,74 +51,82 @@ for dd = 1:height(meta.devices)
     fprintf('Device %s | design %s | %d scans\n', deviceID, designID, height(scanRows));
     fprintf('----------------------------------------\n');
 
-    deviceResults = [];
+    deviceResults = struct([]);
 
     for ss = 1:height(scanRows)
         scanRow = scanRows(ss,:);
+        rawName = string(scanRow.rawName);
+        scanID = double(scanRow.scanID);
+
         [cfgScan, scanCfg] = build_scan_cfg_from_batch(batchCfg, deviceRow, scanRow, designRow);
 
-        isSelected = scan_is_selected(selectedTable, string(scanRow.deviceID), double(scanRow.scanID), string(scanRow.rawName));
-        if selectedOnly && ~isSelected
-            [existingResult, loaded] = load_processed_scan_result(cfgScan, scanCfg);
-            if loaded
-                result = existingResult;
-            else
-                fprintf('Skip non-selected scan without existing result: %s scan %d\n', deviceID, double(scanRow.scanID));
-                continue;
+        isSelected = scan_is_selected(selectedTable, deviceID, scanID, rawName);
+        if isSelected
+            idxSel = selectedTable.deviceID == deviceID & double(selectedTable.scanID) == scanID;
+            if any(idxSel)
+                cfgScan = apply_selected_scan_overrides(cfgScan, selectedTable(find(idxSel, 1, 'first'), :));
             end
-        else
-            if isempty(scanCfg.centerInitial)
-                [c0, found] = lookup_initial_center_from_table(centerTable, ...
-                    string(scanRow.deviceID), double(scanRow.scanID), string(scanRow.rawName));
-                if found
-                    scanCfg.centerInitial = c0;
+        end
+
+        if isempty(scanCfg.centerInitial)
+            [c0, found] = lookup_initial_center_from_table(centerTable, deviceID, scanID, rawName);
+            if found
+                scanCfg.centerInitial = c0;
+            end
+        end
+
+        processedPath = get_processed_result_path(cfgScan, scanID);
+        shouldProcess = true;
+
+        if selectedOnly
+            shouldProcess = isSelected;
+        elseif batchCfg.run.skipExisting && ~batchCfg.run.forceReprocess && isfile(processedPath)
+            shouldProcess = false;
+        end
+
+        if ~shouldProcess
+            [result, foundExisting] = load_processed_result_if_available(cfgScan, scanID);
+            if foundExisting
+                fprintf('\n--- Load existing %s | scan %d | %s ---\n', deviceID, scanID, rawName);
+                if batchCfg.run.regenerateFiguresForExisting
+                    save_scan_figures(cfgScan, result);
                 end
-            end
-
-            [existingResult, loaded] = load_processed_scan_result(cfgScan, scanCfg);
-            forceThis = batchCfg.run.forceReprocess || isSelected || get_bool_table_value(scanRow, 'forceReprocess', false);
-
-            if loaded && batchCfg.run.skipExisting && ~forceThis
-                fprintf('\n--- Load existing %s | scan %d | %s ---\n', ...
-                    deviceID, double(scanRow.scanID), string(scanRow.rawName));
-                result = existingResult;
             else
-                fprintf('\n--- Analyze %s | scan %d | %s ---\n', ...
-                    deviceID, double(scanRow.scanID), string(scanRow.rawName));
-
-                result = analyze_one_pfm_scan(cfgScan, scanCfg);
-                result.batchName = batchCfg.batchName;
-                result.deviceID = char(deviceID);
-                result.designID = char(designID);
-                result.deviceMetadata = deviceRow;
-                result.designMetadata = designRow;
-
-                save_processed_results(cfgScan, result);
-
-                if cfgScan.plot.saveFigures
-                    fig = plot_summary_figure(cfgScan, result);
-                    figName = sprintf('Summary_%s_scan_%d.png', char(deviceID), result.scanID);
-                    exportgraphics(fig, fullfile(cfgScan.paths.figures, figName), 'Resolution', cfgScan.plot.resolution);
-                    savefig(fig, fullfile(cfgScan.paths.figures, strrep(figName, '.png', '.fig')));
-                    if cfgScan.plot.closeAfterSave
-                        close(fig);
-                    end
+                if selectedOnly
+                    fprintf('\n--- Skip non-selected missing result %s | scan %d | %s ---\n', deviceID, scanID, rawName);
+                    continue;
+                else
+                    shouldProcess = true;
                 end
             end
         end
 
-        if isempty(deviceResults)
-            deviceResults = result;
-        else
-            result = orderfields(result, deviceResults(1));
-            deviceResults(end+1) = result; %#ok<AGROW>
+        if shouldProcess
+            fprintf('\n--- Analyze %s | scan %d | %s ---\n', deviceID, scanID, rawName);
+            result = analyze_one_pfm_scan(cfgScan, scanCfg);
+            result.batchName = batchCfg.batchName;
+            result.deviceID = char(deviceID);
+            result.designID = char(designID);
+            result.deviceMetadata = deviceRow;
+            result.designMetadata = designRow;
+            save_processed_results(cfgScan, result);
+            save_scan_figures(cfgScan, result);
         end
 
+        deviceResults = append_struct_result(deviceResults, result);
         resultCounter = resultCounter + 1;
         allResults(resultCounter).result = result; %#ok<AGROW>
 
-        row = make_batch_summary_row(batchCfg, cfgScan, scanRow, result);
-        allRows(end+1,:) = row; %#ok<AGROW>
+        lambdaDesignAtR0 = cfgScan.design.periodRef.LambdaRef * cfgScan.design.R0 / cfgScan.design.periodRef.Rref;
+        periodError = result.WG_period_mean - lambdaDesignAtR0;
+
+        allRows(end+1,:) = { ...
+            string(batchCfg.batchName), deviceID, designID, scanID, rawName, ...
+            result.centerInitial(1), result.centerInitial(2), ...
+            result.centerOptimized(1), result.centerOptimized(2), ...
+            result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
+            result.WG_period_mean, result.WG_period_std, periodError, ...
+            result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean}; %#ok<AGROW>
     end
 
     if ~isempty(deviceResults)
@@ -121,20 +134,16 @@ for dd = 1:height(meta.devices)
         save(fullfile(cfgScan.paths.processedData, sprintf('%s_device_summary.mat', char(deviceID))), ...
             'summary', 'deviceResults', 'deviceRow', 'designRow');
 
-        if numel(deviceResults) >= 2 && cfgScan.plot.saveFigures
+        if numel(deviceResults) >= 2
             figCompare = plot_compare_scans(cfgScan, deviceResults);
             figName = sprintf('Compare_%s_all_scans.png', char(deviceID));
-            exportgraphics(figCompare, fullfile(cfgScan.paths.figures, figName), 'Resolution', cfgScan.plot.resolution);
-            savefig(figCompare, fullfile(cfgScan.paths.figures, strrep(figName, '.png', '.fig')));
-            if cfgScan.plot.closeAfterSave
-                close(figCompare);
-            end
+            save_analysis_figure(figCompare, fullfile(cfgScan.paths.figures, figName), cfgScan);
         end
     end
 end
 
 if isempty(allRows)
-    warning('No processed results available for this batch.');
+    warning('No results available for batch summary.');
     return;
 end
 
@@ -153,25 +162,26 @@ writetable(batchSummary, summaryCsv);
 
 figBatch = plot_batch_summary(batchCfg, batchSummary);
 figName = sprintf('Batch_summary_%s.png', batchCfg.batchName);
-exportgraphics(figBatch, fullfile(batchCfg.paths.figureRoot, figName), 'Resolution', batchCfg.plot.resolution);
-savefig(figBatch, fullfile(batchCfg.paths.figureRoot, strrep(figName, '.png', '.fig')));
-if batchCfg.plot.closeAfterSave
-    close(figBatch);
-end
+save_analysis_figure(figBatch, fullfile(batchCfg.paths.figureRoot, figName), batchCfg);
 
 fprintf('\nBatch analysis finished.\n');
 fprintf('Batch summary:\n  %s\n', summaryCsv);
 fprintf('Figures:\n  %s\n', batchCfg.paths.figureRoot);
+
 end
 
-function row = make_batch_summary_row(batchCfg, cfgScan, scanRow, result)
-lambdaDesignAtR0 = cfgScan.design.periodRef.LambdaRef * cfgScan.design.R0 / cfgScan.design.periodRef.Rref;
-periodError = result.WG_period_mean - lambdaDesignAtR0;
-row = { ...
-    string(batchCfg.batchName), string(result.deviceID), string(result.designID), double(scanRow.scanID), ...
-    string(scanRow.rawName), result.centerInitial(1), result.centerInitial(2), ...
-    result.centerOptimized(1), result.centerOptimized(2), ...
-    result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
-    result.WG_period_mean, result.WG_period_std, periodError, ...
-    result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean};
+function save_scan_figures(cfgScan, result)
+    fig = plot_summary_figure(cfgScan, result);
+    figName = sprintf('Summary_%s_scan_%d.png', cfgScan.deviceName, result.scanID);
+    save_analysis_figure(fig, fullfile(cfgScan.paths.figures, figName), cfgScan);
+end
+
+function resultsOut = append_struct_result(resultsIn, result)
+    if isempty(resultsIn)
+        resultsOut = result;
+    else
+        result = orderfields(result, resultsIn(1));
+        resultsOut = resultsIn;
+        resultsOut(end+1) = result;
+    end
 end
