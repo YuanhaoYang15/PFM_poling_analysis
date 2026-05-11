@@ -1,0 +1,39 @@
+# MATLAB temporary files
+*.asv
+*.m~
+*.slxc
+
+# Raw/private data and generated outputs
+raw_txt/*
+raw_data/*
+processed_data/*
+figures/*
+
+# Keep folder structure
+!raw_txt/.gitkeep
+!raw_data/.gitkeep
+!processed_data/.gitkeep
+!figures/.gitkeep
+
+
+# Machine-specific local path settings
+local/local_paths.m
+
+# Keep local template
+!local/
+!local/local_paths_template.m
+!local/README.md
+
+
+# Machine-specific local settings
+local/local_paths.m
+local/active_batch_config.m
+local/initial_centers_*.mat
+local/initial_centers_*.csv
+local/initial_centers_*_snippet.m
+
+# Keep local templates
+!local/
+!local/local_paths_template.m
+!local/active_batch_config_template.m
+!local/README.md

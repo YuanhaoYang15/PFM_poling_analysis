@@ -1,0 +1,6 @@
+deviceID,designID,polingGroup,polingVoltage,polingTime,row,col,notes
+E7_R1C6,DESIGN_A,,,,1,6,edit designID/poling parameters
+E7_R1C7,DESIGN_A,,,,1,7,edit designID/poling parameters
+E8_R1C2,DESIGN_B,,,,1,2,edit designID/poling parameters
+E8_R1C3,DESIGN_B,,,,1,3,edit designID/poling parameters
+E8_R1C4,DESIGN_C,,,,1,4,edit designID/poling parameters

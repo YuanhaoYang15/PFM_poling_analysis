@@ -1,0 +1,6 @@
+deviceID,designID,polingGroup,polingVoltage,polingTime,row,col,notes
+UF_2p5_r1c1,UF_2p5,,,,1,1,edit poling parameters
+UF_2p5_r1c2,UF_2p5,,,,1,2,edit poling parameters
+UF_2p5_r1c3,UF_2p5,,,,1,3,edit poling parameters
+UF_2p5_r1c4,UF_2p5,,,,1,4,edit poling parameters
+UF_2p5_r1c5,UF_2p5,,,,1,5,edit poling parameters
