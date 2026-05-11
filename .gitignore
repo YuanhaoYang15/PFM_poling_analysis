@@ -15,16 +15,6 @@ figures/*
 !processed_data/.gitkeep
 !figures/.gitkeep
 
-
-# Machine-specific local path settings
-local/local_paths.m
-
-# Keep local template
-!local/
-!local/local_paths_template.m
-!local/README.md
-
-
 # Machine-specific local settings
 local/local_paths.m
 local/active_batch_config.m
