@@ -1,29 +1,91 @@
+# =========================
 # MATLAB temporary files
+# =========================
 *.asv
 *.m~
 *.slxc
+*.mlx.autosave
 
-# Raw/private data and generated outputs
+# =========================
+# OS / editor files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Raw experimental data
+# =========================
 raw_txt/*
 raw_data/*
-processed_data/*
-figures/*
+data/*
+Data/*
 
-# Keep folder structure
+# Keep folder placeholders only
 !raw_txt/.gitkeep
 !raw_data/.gitkeep
+
+# =========================
+# Generated outputs
+# =========================
+processed_data/*
+figures/*
+outputs/*
+results/*
+
 !processed_data/.gitkeep
 !figures/.gitkeep
 
-# Machine-specific local settings
+# MATLAB generated data / figures
+*.mat
+*.fig
+
+# Optional exported figures / reports
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.pdf
+*.csv
+*.xlsx
+
+# =========================
+# Metadata containing experiment details
+# =========================
+metadata/*
+!metadata/.gitkeep
+!metadata/README.md
+
+# =========================
+# Local machine-specific files
+# =========================
+local/*
+!local/.gitkeep
+!local/README.md
+!local/local_paths_template.m
+!local/active_batch_config_template.m
+
+# Explicit local files
 local/local_paths.m
 local/active_batch_config.m
 local/initial_centers_*.mat
 local/initial_centers_*.csv
 local/initial_centers_*_snippet.m
+local/selected_scans_batch_*.csv
+local/selected_scans.csv
 
-# Keep local templates
-!local/
-!local/local_paths_template.m
-!local/active_batch_config_template.m
-!local/README.md
+# =========================
+# Patch / archive files
+# =========================
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+
+# =========================
+# Logs
+# =========================
+*.log
