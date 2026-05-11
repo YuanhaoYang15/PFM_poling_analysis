@@ -7,7 +7,7 @@ function cfg = active_batch_config()
 %   2. Edit the line below.
 %   3. active_batch_config.m is ignored by Git.
 
-cfg = config_batch_20260511();
+cfg = config_batch_20260506();
 
 % To switch to the other batch, use:
 % cfg = config_batch_20260506();

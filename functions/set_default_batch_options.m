@@ -19,6 +19,7 @@ cfg.plot.wgShadeAlpha = get_nested_field(cfg, 'plot.wgShadeAlpha', 0.45);
 cfg.plot.periodYLimMode = get_nested_field(cfg, 'plot.periodYLimMode', 'design_pm');
 cfg.plot.periodYLimHalfRange = get_nested_field(cfg, 'plot.periodYLimHalfRange', 1.0);
 cfg.plot.periodErrorYLimHalfRange = get_nested_field(cfg, 'plot.periodErrorYLimHalfRange', 1.0);
+cfg.plot.batchNotesPanel = get_nested_field(cfg, 'plot.batchNotesPanel', true);
 
 if ~isfield(cfg, 'centerPicker'); cfg.centerPicker = struct(); end
 cfg.centerPicker.skipExisting = get_nested_field(cfg, 'centerPicker.skipExisting', true);
@@ -37,14 +38,16 @@ cfg.centerOpt.maxPeriodStd_um = get_nested_field(cfg, 'centerOpt.maxPeriodStd_um
 cfg.centerOpt.maxAbsPeriodError_um = get_nested_field(cfg, 'centerOpt.maxAbsPeriodError_um', Inf);
 
 if ~isfield(cfg, 'extract'); cfg.extract = struct(); end
-cfg.extract.phaseSmoothWin = get_nested_field(cfg, 'extract.phaseSmoothWin', get_nested_field(cfg, 'extract.smoothWindow', 9));
+cfg.extract.phaseSmoothWin = get_nested_field(cfg, 'extract.phaseSmoothWin', ...
+    get_nested_field(cfg, 'extract.smoothWindow', 9));
 cfg.extract.binarySmoothWin = get_nested_field(cfg, 'extract.binarySmoothWin', 7);
 cfg.extract.minSegmentPts = get_nested_field(cfg, 'extract.minSegmentPts', 3);
 cfg.extract.minPeriodUm = get_nested_field(cfg, 'extract.minPeriodUm', 1.0);
 cfg.extract.maxPeriodUm = get_nested_field(cfg, 'extract.maxPeriodUm', 5.0);
 
 if ~isfield(cfg, 'naming'); cfg.naming = struct(); end
-cfg.naming.rawFilePattern = get_nested_field(cfg, 'naming.rawFilePattern', '^(?<prefix>.+)_r(?<row>\d+)c(?<col>\d+)_(?<scanID>\d+)$');
+cfg.naming.rawFilePattern = get_nested_field(cfg, 'naming.rawFilePattern', ...
+    '^(?<prefix>.+)_r(?<row>\d+)c(?<col>\d+)_(?<scanID>\d+)$');
 cfg.naming.rawFileExt = get_nested_field(cfg, 'naming.rawFileExt', '.txt');
 cfg.naming.defaultPhaseFilePattern = get_nested_field(cfg, 'naming.defaultPhaseFilePattern', '');
 cfg.naming.deviceIDFormat = get_nested_field(cfg, 'naming.deviceIDFormat', '%s_r%dc%d');

@@ -1,4 +1,4 @@
 designID,R0_um,w_um,Rref_um,LambdaRef_um,rMin_um,rMax_um,dr_um,thetaMin_deg,thetaMax_deg,scanSizeX_um,scanSizeY_um,notes
-DESIGN_A,30,1,30,2.5,28,35,0.1,,,,,placeholder; edit to actual size
-DESIGN_B,30,1,30,2.5,28,35,0.1,,,,,placeholder; edit to actual size
-DESIGN_C,30,1,30,2.5,28,35,0.1,,,,,placeholder; edit to actual size
+DESIGN_A,30,1,30,2.5,28,35,0.1,NaN,NaN,NaN,NaN,placeholder; edit to actual size
+DESIGN_B,30,1,30,2.5,28,35,0.1,NaN,NaN,NaN,NaN,placeholder; edit to actual size
+DESIGN_C,30,1,30,2.5,28,35,0.1,NaN,NaN,NaN,NaN,placeholder; edit to actual size

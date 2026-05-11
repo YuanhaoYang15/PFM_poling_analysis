@@ -1,57 +1,24 @@
 # PFM Poling Analysis
 
-A lightweight MATLAB project for batch analysis of raw PFM text exports from circularly poled devices.
+MATLAB toolkit for batch analysis of PFM scans from circularly poled devices.
 
-The workflow is designed for real poling-test batches:
+The project is designed for the real experimental workflow:
 
 ```text
 one batch
 → multiple design types
 → multiple devices
 → multiple PFM scans per device
+→ center correction
+→ period/duty-cycle extraction
+→ scan/device/batch summaries
 ```
 
-Raw data do **not** need to be placed inside this code repository.
+Raw PFM data should stay outside this code repository.
 
-## Recommended Workflow
+---
 
-```matlab
-main_pick_initial_centers_for_batch
-main_analyze_batch
-```
-
-The first script opens every scan and lets you manually click an approximate center. The second script performs automatic center correction using the designed poling period, extracts period/duty cycle, and generates scan/device/batch summaries.
-
-## Folder Logic
-
-Code project:
-
-```text
-PFM_poling_analysis/
-├─ config/
-├─ metadata/
-├─ functions/
-├─ local/
-├─ processed_data/
-└─ figures/
-```
-
-External raw data folders, for example:
-
-```text
-D:\Project\NUS\Project\Single Photon Nonlinearity\Image\20260511
-D:\Project\NUS\Project\Single Photon Nonlinearity\Image\20260506
-```
-
-The raw data paths are configured in:
-
-```text
-local/local_paths.m
-```
-
-This file is ignored by Git.
-
-## First-Time Setup
+## 1. First-time setup
 
 Copy:
 
@@ -65,7 +32,7 @@ to:
 local/local_paths.m
 ```
 
-Then edit the raw roots:
+Then set your external raw-data roots, for example:
 
 ```matlab
 paths.rawRoots.batch_20260511 = ...
@@ -90,28 +57,54 @@ local/active_batch_config.m
 Then choose the active batch:
 
 ```matlab
+function cfg = active_batch_config()
 cfg = config_batch_20260511();
+end
 ```
 
-or
+Both `local_paths.m` and `active_batch_config.m` are ignored by Git.
+
+---
+
+## 2. Recommended workflow
+
+For a new or updated batch:
 
 ```matlab
-cfg = config_batch_20260506();
+main_generate_metadata_from_raw_folder
+main_pick_initial_centers_for_batch
+main_analyze_batch
 ```
 
-## Metadata Files
+For reworking selected scans:
+
+```matlab
+main_select_scans_for_rework
+main_pick_centers_selected      % only needed if repicking centers
+main_analyze_selected
+```
+
+To clear the selected-scan list:
+
+```matlab
+main_clear_selected_scans
+```
+
+---
+
+## 3. Metadata files
 
 Each batch is controlled by three CSV files:
 
 ```text
-metadata/designs_20260511.csv
-metadata/devices_20260511.csv
-metadata/scans_20260511.csv
+metadata/designs_<batchName>.csv
+metadata/devices_<batchName>.csv
+metadata/scans_<batchName>.csv
 ```
 
 ### designs CSV
 
-Defines structure/design types:
+Defines geometry/design parameters:
 
 ```text
 designID,R0_um,w_um,Rref_um,LambdaRef_um,rMin_um,rMax_um,dr_um,...
@@ -119,74 +112,82 @@ designID,R0_um,w_um,Rref_um,LambdaRef_um,rMin_um,rMax_um,dr_um,...
 
 ### devices CSV
 
-Defines individual devices and their poling parameters:
+Defines device-level information and notes:
 
 ```text
 deviceID,designID,polingGroup,polingVoltage,polingTime,row,col,notes
 ```
 
+The `notes` column is displayed in the right-side notes panel of the batch summary figure.
+
 ### scans CSV
 
-Defines raw PFM scans:
+Defines scan-level raw file mapping:
 
 ```text
 deviceID,scanID,rawName,phaseFilePattern,positionLabel,centerX_um,centerY_um,notes
 ```
 
-If `centerX_um` and `centerY_um` are empty, use:
+Usually `centerX_um` and `centerY_um` are left empty, and centers are picked with:
 
 ```matlab
 main_pick_initial_centers_for_batch
 ```
 
-to manually click approximate centers.
+---
 
-## Analysis Principle
-
-For a circularly poled device with angular period \(\Delta\theta\), the designed period along radius \(r\) is
-
-\[
-\Lambda_\mathrm{design}(r) = r\Delta\theta .
-\]
-
-If the designed period is known at \(R_\mathrm{ref}\),
-
-\[
-\Lambda_\mathrm{design}(r)
-=
-\Lambda_\mathrm{ref}
-\frac{r}{R_\mathrm{ref}} .
-\]
-
-The center correction uses only the period curve. Duty cycle is not used during center correction, because it is the physical result to be compared after correction.
-
-## Outputs
+## 4. Main outputs
 
 For each device:
 
 ```text
-processed_data/<batch>/<device>/
-figures/<batch>/<device>/
+processed_data/<batchName>/<deviceID>/
+figures/<batchName>/<deviceID>/
 ```
 
 For the whole batch:
 
 ```text
-processed_data/<batch>/batch_summary_<batch>.csv
-figures/<batch>/Batch_summary_<batch>.png
+processed_data/<batchName>/batch_summary_<batchName>.csv
+figures/<batchName>/Batch_summary_<batchName>.png
 ```
 
-## Typical Run
+The `.fig` files are saved in a visible state, so double-clicking them in MATLAB should open them normally.
 
-```matlab
-cd('D:\GitHub\PFM_poling_analysis')
+---
 
-main_pick_initial_centers_for_batch
-main_analyze_batch
-```
+## 5. Analysis principle
 
-To switch batches, edit only:
+For a circularly poled device with angular period `Delta theta`, the designed period along radius `r` is:
 
 ```text
+Lambda_design(r) = r * Delta theta
+```
+
+If the designed period is known at reference radius `Rref`:
+
+```text
+Lambda_design(r) = LambdaRef * r / Rref
+```
+
+The period curve is used for center correction. Duty cycle is extracted after the center is determined.
+
+---
+
+## 6. Git hygiene
+
+Do not commit raw data or generated outputs.
+
+Ignored by default:
+
+```text
+raw_txt/*
+raw_data/*
+processed_data/*
+figures/*
+local/local_paths.m
 local/active_batch_config.m
+local/initial_centers_*.mat
+local/initial_centers_*.csv
+local/selected_scans_batch_*.csv
 ```

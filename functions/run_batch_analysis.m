@@ -17,7 +17,11 @@ if ~exist(batchCfg.paths.processedRoot, 'dir'); mkdir(batchCfg.paths.processedRo
 if ~exist(batchCfg.paths.figureRoot, 'dir'); mkdir(batchCfg.paths.figureRoot); end
 
 centerTable = load_batch_initial_centers(batchCfg);
-selectedTable = get_selected_scan_table(batchCfg, selectedOnly);
+if selectedOnly
+    selectedTable = get_selected_scan_table(batchCfg, true);
+else
+    selectedTable = table();
+end
 
 fprintf('\n========================================\n');
 fprintf('Analyze batch: %s\n', batchCfg.batchName);
