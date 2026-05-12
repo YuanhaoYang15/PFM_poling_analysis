@@ -1,15 +1,27 @@
 function analysis = extract_period_duty_vs_radius(data, center, rList, cfg)
 %EXTRACT_PERIOD_DUTY_VS_RADIUS Extract period/duty versus radius.
 %
-% This version uses the legacy, previously validated PFM trace algorithm:
+% Stable extraction logic:
 %   1. interpolate cos(phase) and sin(phase), not raw wrapped phase;
 %   2. reconstruct wrapped phase along the arc;
 %   3. smooth on the unit circle;
-%   4. classify the two PFM phase states using a simple 2D k-means;
+%   4. classify the two PFM phase states using 2D k-means;
 %   5. compute period and duty cycle from the binary trace.
 %
-% The core logic is adapted from the old working script:
-%   scan_pfm_duty_cycle_vs_radius_clean.m
+% New in this version:
+%   Arc sampling and smoothing can be specified in physical units:
+%
+%       cfg.arc.ds_um                  arc-length sampling step
+%       cfg.extract.phaseSmooth_um     phase smoothing length
+%       cfg.extract.binarySmooth_um    binary smoothing length
+%       cfg.extract.minSegment_um      minimum accepted segment length
+%
+% If these fields are absent or empty, the old point-count parameters are used:
+%
+%       cfg.arc.nTheta
+%       cfg.extract.phaseSmoothWin
+%       cfg.extract.binarySmoothWin
+%       cfg.extract.minSegmentPts
 
 phase_deg = data.phase;
 x_um = data.X(1,:);
@@ -30,17 +42,28 @@ nPeriods   = nan(1, nR);
 
 details = repmat(struct(), 1, nR);
 
-nTheta = get_cfg_value(cfg, 'arc.nTheta', 6000);
-phaseSmoothWin = get_cfg_value(cfg, 'extract.phaseSmoothWin', ...
-                 get_cfg_value(cfg, 'extract.smoothWindow', 9));
-binarySmoothWin = get_cfg_value(cfg, 'extract.binarySmoothWin', 7);
-minSegmentPts = get_cfg_value(cfg, 'extract.minSegmentPts', 3);
+% Old fallback parameters.
+nThetaDefault = get_cfg_value(cfg, 'arc.nTheta', 6000);
+phaseSmoothWinDefault = get_cfg_value(cfg, 'extract.phaseSmoothWin', ...
+                         get_cfg_value(cfg, 'extract.smoothWindow', 9));
+binarySmoothWinDefault = get_cfg_value(cfg, 'extract.binarySmoothWin', 7);
+minSegmentPtsDefault = get_cfg_value(cfg, 'extract.minSegmentPts', 3);
+
+% New physical-unit parameters.
+dsTarget_um = get_cfg_value(cfg, 'arc.ds_um', []);
+phaseSmooth_um = get_cfg_value(cfg, 'extract.phaseSmooth_um', []);
+binarySmooth_um = get_cfg_value(cfg, 'extract.binarySmooth_um', []);
+minSegment_um = get_cfg_value(cfg, 'extract.minSegment_um', []);
+
+edgeTrimFraction = get_cfg_value(cfg, 'arc.edgeTrimFraction', 0);
 
 for ir = 1:nR
     r_um = rList(ir);
 
+    nTheta = choose_nTheta_for_radius(r_um, nThetaDefault, dsTarget_um);
+
     tr = samplePhaseAlongArc_legacy(phase_deg, x_um, y_um, ...
-        xc_um, yc_um, r_um, nTheta);
+        xc_um, yc_um, r_um, nTheta, edgeTrimFraction);
 
     arc(ir).r = r_um;
     arc(ir).theta = tr.theta_rad;
@@ -56,8 +79,20 @@ for ir = 1:nR
         continue;
     end
 
+    dsEff_um = median(diff(tr.s_um), 'omitnan');
+
+    phaseSmoothWin = choose_window_points(phaseSmooth_um, dsEff_um, phaseSmoothWinDefault);
+    binarySmoothWin = choose_window_points(binarySmooth_um, dsEff_um, binarySmoothWinDefault);
+    minSegmentPts = choose_min_segment_points(minSegment_um, dsEff_um, minSegmentPtsDefault);
+
     a = analyzeDutyFromPhaseTrace_legacy(tr.s_um, tr.phaseWrapped_deg, ...
         phaseSmoothWin, binarySmoothWin, minSegmentPts);
+
+    a.dsEff_um = dsEff_um;
+    a.phaseSmoothWin = phaseSmoothWin;
+    a.binarySmoothWin = binarySmoothWin;
+    a.minSegmentPts = minSegmentPts;
+    a.nTheta = nTheta;
 
     dutyMean(ir)   = a.dutyMean;
     dutyStd(ir)    = a.dutyStd;
@@ -83,7 +118,57 @@ analysis.details = details;
 
 end
 
-function trace = samplePhaseAlongArc_legacy(phase_deg, x_um, y_um, xc_um, yc_um, r_um, nTheta)
+function nTheta = choose_nTheta_for_radius(r_um, nThetaDefault, dsTarget_um)
+    if isempty(dsTarget_um) || ~isfinite(dsTarget_um) || dsTarget_um <= 0
+        nTheta = nThetaDefault;
+        return;
+    end
+
+    nTheta = ceil(2*pi*r_um / dsTarget_um) + 1;
+
+    % Keep at least the old value so old configs do not become coarser.
+    nTheta = max(nTheta, nThetaDefault);
+
+    % Avoid too-small values.
+    nTheta = max(nTheta, 1000);
+end
+
+function w = choose_window_points(length_um, dsEff_um, fallbackWin)
+    if isempty(length_um) || ~isfinite(length_um) || length_um <= 0 || ...
+            isempty(dsEff_um) || ~isfinite(dsEff_um) || dsEff_um <= 0
+        w = fallbackWin;
+    else
+        w = round(length_um / dsEff_um);
+    end
+
+    w = sanitize_window_points(w);
+end
+
+function w = choose_min_segment_points(length_um, dsEff_um, fallbackPts)
+    if isempty(length_um) || ~isfinite(length_um) || length_um <= 0 || ...
+            isempty(dsEff_um) || ~isfinite(dsEff_um) || dsEff_um <= 0
+        w = fallbackPts;
+    else
+        w = ceil(length_um / dsEff_um);
+    end
+
+    w = max(1, round(w));
+end
+
+function w = sanitize_window_points(w)
+    if isempty(w) || ~isfinite(w) || w < 1
+        w = 1;
+    end
+
+    w = round(w);
+
+    % Use odd windows for more symmetric local smoothing.
+    if mod(w, 2) == 0
+        w = w + 1;
+    end
+end
+
+function trace = samplePhaseAlongArc_legacy(phase_deg, x_um, y_um, xc_um, yc_um, r_um, nTheta, edgeTrimFraction)
     theta = linspace(-pi, pi, nTheta);
 
     xq = xc_um + r_um * cos(theta);
@@ -104,6 +189,17 @@ function trace = samplePhaseAlongArc_legacy(phase_deg, x_um, y_um, xc_um, yc_um,
 
     trace = emptyTrace_legacy(r_um);
     if isempty(i1), return; end
+
+    % Optional edge trimming after selecting the longest visible arc.
+    if nargin >= 8 && ~isempty(edgeTrimFraction) && isfinite(edgeTrimFraction) && edgeTrimFraction > 0
+        edgeTrimFraction = min(max(edgeTrimFraction, 0), 0.45);
+        nSeg = i2 - i1 + 1;
+        nTrim = floor(edgeTrimFraction * nSeg);
+        if nSeg - 2*nTrim >= 20
+            i1 = i1 + nTrim;
+            i2 = i2 - nTrim;
+        end
+    end
 
     theta_seg = theta(i1:i2);
     x_seg = xq(i1:i2);
@@ -136,8 +232,12 @@ function a = analyzeDutyFromPhaseTrace_legacy(s_um, phaseWrapped_deg, phaseSmoot
 
     if numel(s_um) < 20, return; end
 
+    phaseSmoothWin = sanitize_window_points(phaseSmoothWin);
+    binarySmoothWin = sanitize_window_points(binarySmoothWin);
+    minSegmentPts = max(1, round(minSegmentPts));
+
     Csm = movmean(cosd(phaseWrapped_deg), phaseSmoothWin, 'omitnan');
-    Ssm = movmean(sind(phaseWrapped_deg), binarySafeWin(phaseSmoothWin), 'omitnan');
+    Ssm = movmean(sind(phaseWrapped_deg), phaseSmoothWin, 'omitnan');
 
     phiSm_deg = atan2d(Ssm, Csm);
     XY = [cosd(phiSm_deg(:)), sind(phiSm_deg(:))];
@@ -179,13 +279,6 @@ function a = analyzeDutyFromPhaseTrace_legacy(s_um, phaseWrapped_deg, phaseSmoot
     a.periodMean_um = mean(periodList);
     a.periodStd_um  = std(periodList);
     a.periodSEM_um  = a.periodStd_um / sqrt(a.nPeriods);
-end
-
-function w = binarySafeWin(w)
-    if isempty(w) || ~isfinite(w) || w < 1
-        w = 1;
-    end
-    w = round(w);
 end
 
 function idx = simpleKMeans2D_legacy(X, maxIter)

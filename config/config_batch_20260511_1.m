@@ -1,4 +1,4 @@
-function cfg = config_batch_20260506()
+function cfg = config_batch_20260511_1()
 %CONFIG_TEMPLATE_BATCH_CLEAN Clean batch-level configuration template for PFM poling analysis.
 %
 % How to use:
@@ -20,7 +20,7 @@ cfg = struct();
 %% =========================
 %  1. Batch identity
 % =========================
-cfg.batchName = '20260506';   % e.g. '20260511_1'
+cfg.batchName = '20260511_1';   % e.g. '20260511_1'
 
 %% =========================
 %  2. Project paths
@@ -132,8 +132,8 @@ cfg.arc.edgeTrimFraction = 0.03;
 
 %% Domain extraction
 cfg.extract.phaseSmooth_um  = 0.30;
-cfg.extract.binarySmooth_um = 0.30;
-cfg.extract.minSegment_um   = 0.15;
+cfg.extract.binarySmooth_um = 0.20;
+cfg.extract.minSegment_um   = 0.10;
 
 % fallback old parameters
 cfg.extract.phaseSmoothWin  = 9;
@@ -170,7 +170,7 @@ cfg.centerPicker.method = 'manual_radial_lines';
 cfg.centerOpt.enable = true;
 
 % Search grid around the manually picked radial-line center.
-cfg.centerOpt.searchRange = 1.5;        % um, +/- range in x and y
+cfg.centerOpt.searchRange = 2;        % um, +/- range in x and y
 cfg.centerOpt.searchStep  = 0.05;       % um
 
 % Radius step used only during center optimization.

@@ -181,11 +181,33 @@ function save_scan_figures(cfgScan, result)
 end
 
 function resultsOut = append_struct_result(resultsIn, result)
-    if isempty(resultsIn)
-        resultsOut = result;
-    else
-        result = orderfields(result, resultsIn(1));
-        resultsOut = resultsIn;
-        resultsOut(end+1) = result;
+%APPEND_STRUCT_RESULT Append result even if old/new result structs differ.
+
+if isempty(resultsIn)
+    resultsOut = result;
+    return;
+end
+
+fieldsOld = fieldnames(resultsIn);
+fieldsNew = fieldnames(result);
+
+allFields = [fieldsOld; setdiff(fieldsNew, fieldsOld, 'stable')];
+
+resultsIn = ensure_struct_fields(resultsIn, allFields);
+result    = ensure_struct_fields(result, allFields);
+
+resultsOut = orderfields(resultsIn, allFields);
+result     = orderfields(result, allFields);
+
+resultsOut(end+1) = result;
+
+end
+
+function S = ensure_struct_fields(S, allFields)
+for kk = 1:numel(allFields)
+    f = allFields{kk};
+    if ~isfield(S, f)
+        [S.(f)] = deal([]);
     end
+end
 end
