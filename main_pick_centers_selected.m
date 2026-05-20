@@ -1,4 +1,4 @@
-%% Re-pick initial centers for selected scans only
+yp%% Re-pick initial centers for selected scans only
 %
 % First create selected list interactively:
 %   main_select_scans_for_rework

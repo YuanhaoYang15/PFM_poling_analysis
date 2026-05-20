@@ -131,9 +131,12 @@ cfg.arc.ds_um = 0.04;
 cfg.arc.edgeTrimFraction = 0.03;
 
 %% Domain extraction
-cfg.extract.phaseSmooth_um  = 0.30;
-cfg.extract.binarySmooth_um = 0.20;
-cfg.extract.minSegment_um   = 0.10;
+% cfg.extract.phaseSmooth_um  = 0.30;
+% cfg.extract.binarySmooth_um = 0.20;
+% cfg.extract.minSegment_um   = 0.10;
+cfg.extract.phaseSmooth_um  = 0.60;
+cfg.extract.binarySmooth_um = 0.40;
+cfg.extract.minSegment_um   = 0.30;
 
 % fallback old parameters
 cfg.extract.phaseSmoothWin  = 9;
@@ -143,8 +146,10 @@ cfg.extract.minSegmentPts   = 3;
 %% =========================
 %  8. Phase processing and domain extraction
 % =========================
-cfg.extract.minPeriodUm = 1.0;
-cfg.extract.maxPeriodUm = 5.0;
+% cfg.extract.minPeriodUm = 1.0;
+% cfg.extract.maxPeriodUm = 5.0;
+cfg.extract.minPeriodUm = 2.0;
+cfg.extract.maxPeriodUm = 4.0;
 
 % Legacy extraction parameters.
 cfg.extract.phaseSmoothWin  = 9;
