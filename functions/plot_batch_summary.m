@@ -2,7 +2,7 @@ function fig = plot_batch_summary(batchCfg, batchSummary)
 %PLOT_BATCH_SUMMARY Plot compact batch-level summary with a right notes panel.
 %
 % Device notes are intentionally simple and read from:
-%   metadata/devices_<batchName>.csv
+%   local/batches/<batchName>/metadata/devices.csv
 %
 % Expected device columns:
 %   deviceID, designID, row, col, notes

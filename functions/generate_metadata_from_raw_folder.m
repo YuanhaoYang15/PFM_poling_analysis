@@ -80,6 +80,11 @@ devices = merge_devices_simplified(oldDevices, newDevices);
 newDesigns = build_designs_from_devices(devices);
 designs = merge_by_key(oldDesigns, newDesigns, 'designID');
 
+metadataDir = fileparts(batchCfg.metadata.scansFile);
+if ~exist(metadataDir, 'dir')
+    mkdir(metadataDir);
+end
+
 writetable(scans, batchCfg.metadata.scansFile);
 writetable(devices, batchCfg.metadata.devicesFile);
 writetable(designs, batchCfg.metadata.designsFile);

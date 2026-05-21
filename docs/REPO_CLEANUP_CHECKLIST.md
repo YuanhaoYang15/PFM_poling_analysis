@@ -1,6 +1,8 @@
 # Repository cleanup checklist for v1.0
 
-This project is now a batch-level PFM analysis toolkit. The following files are the recommended v1.0 structure.
+This repo is a batch-level PFM analysis toolkit. Private batch data belongs
+under `local/batches/<batchName>/` or under the private `batchParent`
+configured in `local/local_paths.m`.
 
 ## Keep
 
@@ -9,6 +11,8 @@ Root scripts:
 ```text
 main_generate_metadata_from_raw_folder.m
 main_pick_initial_centers_for_batch.m
+main_analyze_inphase_batch.m
+main_analyze_inphase_selected.m
 main_analyze_batch.m
 main_select_scans_for_rework.m
 main_pick_centers_selected.m
@@ -16,67 +20,63 @@ main_analyze_selected.m
 main_clear_selected_scans.m
 ```
 
-Folders:
+Tracked folders:
 
 ```text
 config/
 functions/
-metadata/
-local/
 docs/
+local/
 ```
 
-Empty placeholder folders are okay:
+Tracked local templates:
 
 ```text
-raw_txt/.gitkeep
-raw_data/.gitkeep
-processed_data/.gitkeep
-figures/.gitkeep
+local/README.md
+local/local_paths_template.m
+local/active_batch_config_template.m
 ```
 
-## Consider deleting or archiving
+## Current private batch tree
 
-These are legacy single-device/debug entry points. Move them to `docs/legacy/` or delete after confirming you no longer use them:
+```text
+local/batches/<batchName>/
+  raw/
+  metadata/
+  centers/
+  selected_scans/
+  results/inphase/
+  results/phase/
+```
+
+Root-level `raw_txt/`, `raw_data/`, `metadata/`, `processed_data/`, and
+`figures/` are not public layout folders anymore. They remain ignored if an
+older workflow recreates them.
+
+## Do not commit
+
+```text
+local/batches/*
+local/local_paths.m
+local/active_batch_config.m
+raw experimental files
+metadata CSVs with experiment details
+picked center files
+selected-scan CSVs
+processed .mat files
+generated figures and logs
+```
+
+## Optional legacy cleanup
+
+Single-device or debug scripts that reappear from older branches should be
+deleted or archived after confirming they are not needed:
 
 ```text
 main_analyze_one_device.m
 main_analyze_all_devices.m
 main_pick_initial_centers.m
 main_debug_one_raw_scan.m
-```
-
-Legacy config files:
-
-```text
 config/config_E7_R1C2.m
 config/config_template.m
-```
-
-Temporary patch folders/files after merging:
-
-```text
-config_patch/
-```
-
-## Do not commit
-
-```text
-local/local_paths.m
-local/active_batch_config.m
-local/initial_centers_*.mat
-local/initial_centers_*.csv
-local/selected_scans_batch_*.csv
-processed_data/*
-figures/*
-raw_txt/*
-raw_data/*
-```
-
-If any generated files were already tracked by Git, remove them from tracking with:
-
-```bash
-git rm -r --cached processed_data figures raw_txt raw_data
-git add .gitignore
-git commit -m "Stop tracking generated files"
 ```

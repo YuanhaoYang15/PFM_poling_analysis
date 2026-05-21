@@ -28,65 +28,19 @@ cfg.batchName = 'CHANGE_ME';   % e.g. '20260511_1'
 projectRoot = fileparts(fileparts(mfilename('fullpath')));
 cfg.paths.projectRoot = projectRoot;
 
-% Load machine-specific local paths if available.
-localDir = fullfile(projectRoot, 'local');
-if exist(fullfile(localDir, 'local_paths.m'), 'file')
-    addpath(localDir);
-    localPaths = local_paths();
-else
-    localPaths = struct();
-end
-
-% Raw data root for this batch.
-% Priority:
-%   1. localPaths.rawRoots.batch_<batchName>
-%   2. fullfile(localPaths.rawParent, batchName)
-%   3. localPaths.rawTxtRoot
-%   4. <projectRoot>/raw_txt/<batchName>
-rawRootField = matlab.lang.makeValidName(['batch_', cfg.batchName]);
-
-if isfield(localPaths, 'rawRoots') && isfield(localPaths.rawRoots, rawRootField)
-    cfg.paths.rawTxtRoot = localPaths.rawRoots.(rawRootField);
-
-elseif isfield(localPaths, 'rawParent') && ~isempty(localPaths.rawParent)
-    cfg.paths.rawTxtRoot = fullfile(localPaths.rawParent, cfg.batchName);
-
-elseif isfield(localPaths, 'rawTxtRoot') && ~isempty(localPaths.rawTxtRoot)
-    cfg.paths.rawTxtRoot = localPaths.rawTxtRoot;
-
-else
-    cfg.paths.rawTxtRoot = fullfile(projectRoot, 'raw_txt', cfg.batchName);
-end
-
-% Output location.
-% If localPaths.outputRoot is empty or missing, outputs are saved in repo.
-if isfield(localPaths, 'outputRoot') && ~isempty(localPaths.outputRoot)
-    cfg.paths.processedRoot = fullfile(localPaths.outputRoot, 'processed_data', cfg.batchName);
-    cfg.paths.figureRoot    = fullfile(localPaths.outputRoot, 'figures', cfg.batchName);
-else
-    cfg.paths.processedRoot = fullfile(projectRoot, 'processed_data', cfg.batchName);
-    cfg.paths.figureRoot    = fullfile(projectRoot, 'figures', cfg.batchName);
-end
-
-% Compatibility alias used by some older functions.
-cfg.paths.rawData = cfg.paths.rawTxtRoot;
+% Raw data, metadata, centers, and generated results live in one private
+% local batch folder by default: local/batches/<batchName>/.
+cfg = configure_local_batch_paths(cfg);
 
 %% =========================
-%  3. Metadata files
-% =========================
-cfg.metadata.designsFile = fullfile(projectRoot, 'metadata', ['designs_', cfg.batchName, '.csv']);
-cfg.metadata.devicesFile = fullfile(projectRoot, 'metadata', ['devices_', cfg.batchName, '.csv']);
-cfg.metadata.scansFile   = fullfile(projectRoot, 'metadata', ['scans_',   cfg.batchName, '.csv']);
-
-%% =========================
-%  4. Run behavior
+%  3. Run behavior
 % =========================
 cfg.run.skipExisting = true;                  % reuse existing processed scan results
 cfg.run.forceReprocess = false;               % true = reprocess everything
 cfg.run.regenerateFiguresForExisting = false; % true = recreate figures from saved results
 
 %% =========================
-%  5. Raw text preprocessing
+%  4. Raw text preprocessing
 % =========================
 cfg.preprocess.enable = true;
 cfg.preprocess.useCache = true;
@@ -163,6 +117,7 @@ cfg.extract.verbose = true;
 % =========================
 cfg.centerPicker.skipExisting = true;
 cfg.centerPicker.method = 'manual_radial_lines';
+cfg.centerPicker.displaySignal = 'phase';  % 'phase' or 'inphase'
 
 %% =========================
 %  10. Center optimization
@@ -187,6 +142,14 @@ cfg.centerOpt.minValidRadii = 3;
 cfg.centerOpt.minNPeriods = 2;
 cfg.centerOpt.maxPeriodStd_um = Inf;
 cfg.centerOpt.maxAbsPeriodError_um = Inf;
+
+% If a best center reaches the search edge, refine once with a smaller
+% search box biased toward the unexplored outward side.
+cfg.centerOpt.edgeRefine.enable = true;
+cfg.centerOpt.edgeRefine.maxPasses = 2;
+cfg.centerOpt.edgeRefine.rangeScale = 0.5;
+cfg.centerOpt.edgeRefine.outwardFraction = 0.75;
+cfg.centerOpt.edgeRefine.boundaryStepTolerance = 1.0;
 
 %% =========================
 %  11. Plot options

@@ -8,13 +8,13 @@ batchCfg = set_default_batch_options(batchCfg);
 meta = read_batch_metadata(batchCfg);
 selectedTable = get_selected_scan_table(batchCfg, selectedOnly);
 
-localDir = fullfile(batchCfg.paths.projectRoot, 'local');
-if ~exist(localDir, 'dir'); mkdir(localDir); end
+centerPaths = get_batch_center_paths(batchCfg);
+if ~exist(centerPaths.root, 'dir'); mkdir(centerPaths.root); end
 if ~exist(batchCfg.paths.processedRoot, 'dir'); mkdir(batchCfg.paths.processedRoot); end
 if ~exist(batchCfg.paths.figureRoot, 'dir'); mkdir(batchCfg.paths.figureRoot); end
 
-centerFile = fullfile(localDir, sprintf('initial_centers_batch_%s.mat', batchCfg.batchName));
-centerCsv  = fullfile(localDir, sprintf('initial_centers_batch_%s.csv', batchCfg.batchName));
+centerFile = centerPaths.mat;
+centerCsv = centerPaths.csv;
 
 existingTable = table();
 if isfile(centerFile)
@@ -80,7 +80,7 @@ for ii = 1:height(meta.scans)
     fprintf('Saved center: %s scan %d -> [%.6f, %.6f]\n', deviceID, scanID, picked(1), picked(2));
 end
 
-snippetFile = fullfile(localDir, sprintf('initial_centers_batch_%s_snippet.m', batchCfg.batchName));
+snippetFile = centerPaths.snippet;
 write_center_snippet(centerTable, snippetFile);
 
 fprintf('\nSaved initial centers:\n');

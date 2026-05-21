@@ -17,25 +17,18 @@ Thumbs.db
 # =========================
 # Raw experimental data
 # =========================
-raw_txt/*
-raw_data/*
+raw_txt/
+raw_data/
 data/*
 Data/*
-
-# Keep folder placeholders only
-!raw_txt/.gitkeep
-!raw_data/.gitkeep
 
 # =========================
 # Generated outputs
 # =========================
-processed_data/*
-figures/*
-outputs/*
-results/*
-
-!processed_data/.gitkeep
-!figures/.gitkeep
+processed_data/
+figures/
+outputs/
+results/
 
 # MATLAB generated data / figures
 *.mat
@@ -54,15 +47,12 @@ results/*
 # =========================
 # Metadata containing experiment details
 # =========================
-metadata/*
-!metadata/.gitkeep
-!metadata/README.md
+metadata/
 
 # =========================
 # Local machine-specific files
 # =========================
 local/*
-!local/.gitkeep
 !local/README.md
 !local/local_paths_template.m
 !local/active_batch_config_template.m
