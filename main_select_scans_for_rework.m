@@ -1,6 +1,6 @@
-%% Select scans for rework from batch summary
+%% Select scans for rework from a batch summary
 %
-% This script avoids manually creating local/selected_scans*.csv.
+% This script avoids manually creating the batch-local selected-scans CSV.
 
 clear; clc; close all;
 
@@ -10,16 +10,30 @@ addpath(fullfile(pwd, 'config'));
 batchCfg = get_active_batch_config();
 batchCfg = set_default_batch_options(batchCfg);
 
-summaryCsv = fullfile(batchCfg.paths.processedRoot, sprintf('batch_summary_%s.csv', batchCfg.batchName));
+fprintf('\nSummary basis options:\n');
+fprintf('  i = inphase (default)\n');
+fprintf('  p = phase\n');
+basisInput = lower(strtrim(input('Choose summary basis [i/p, default=i]: ', 's')));
+
+if strcmp(basisInput, 'p') || strcmp(basisInput, 'phase')
+    summaryBasis = "phase";
+    summaryCsv = fullfile(batchCfg.paths.processedRoot, sprintf('batch_summary_%s.csv', batchCfg.batchName));
+    analyzeScript = 'main_analyze_selected';
+else
+    summaryBasis = "inphase";
+    summaryCsv = fullfile(batchCfg.paths.inphaseProcessedRoot, ...
+        sprintf('batch_summary_%s_inphase.csv', batchCfg.batchName));
+    analyzeScript = 'main_analyze_inphase_selected';
+end
 
 if ~isfile(summaryCsv)
-    error('Batch summary not found:\n%s\nRun main_analyze_batch first.', summaryCsv);
+    error('Batch summary not found:\n%s\nRun the %s batch analysis first.', summaryCsv, summaryBasis);
 end
 
 S = readtable(summaryCsv, 'TextType', 'string');
 
 fprintf('\n========================================\n');
-fprintf('Select scans for rework | batch %s\n', batchCfg.batchName);
+fprintf('Select scans for rework | batch %s | basis %s\n', batchCfg.batchName, summaryBasis);
 fprintf('Summary: %s\n', summaryCsv);
 fprintf('========================================\n\n');
 
@@ -118,4 +132,4 @@ fprintf('\nNext steps:\n');
 if any(selectedTable.action == "repick_center")
     fprintf('  main_pick_centers_selected\n');
 end
-fprintf('  main_analyze_selected\n');
+fprintf('  %s\n', analyzeScript);

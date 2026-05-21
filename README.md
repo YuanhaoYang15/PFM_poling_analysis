@@ -1,229 +1,169 @@
 # PFM Poling Analysis
 
-A lightweight MATLAB analysis project for processing PFM phase scans of circularly poled devices. The workflow focuses on reproducible extraction of poling period and duty cycle, with center-position correction based on the designed poling period.
+MATLAB batch analysis for circular PFM poling scans. The repo extracts
+period and duty cycle versus radius, refines device centers from designed
+period, and saves scan, device, and batch summaries.
 
-## Motivation
+## Current Model
 
-For circular poling patterns, the extracted period and duty cycle can be sensitive to the assumed device center. Even a small center offset can lead to a systematic error in the measured period versus radius. This project provides a structured workflow to:
+The tracked repo is code-first. Private experimental state lives under
+`local/batches/<batchName>/` or under a private batch parent configured in
+`local/local_paths.m`.
 
-- load and visualize PFM phase maps;
-- sample phase data along circular arcs;
-- extract poling period and duty cycle as functions of radius;
-- correct the assumed center using the designed period as a reference;
-- compare multiple PFM scans from the same device;
-- save processed data and summary figures for traceable analysis.
+Inphase and phase are two signal bases for the same batch:
 
-The project is designed for devices where each physical device may have multiple PFM scans, named for example as `_1`, `_2`, `_3`, etc. These scans may correspond to different positions, repeated measurements, or regions at different distances from electrodes. The analysis does not assume a fixed “near/far” structure.
+- Inphase is the preferred duty-cycle extraction basis.
+- Phase remains available for observation, comparison, and optional
+  phase-based extraction.
+- Manual center picking, automatic center optimization, and duty extraction
+  stay explicit in saved results.
 
-## Concept
-
-For a circularly poled device with angular period \(\Delta\theta\), the designed poling period along a radius \(r\) is approximately
-
-\[
-\Lambda_\mathrm{design}(r) = r \Delta\theta .
-\]
-
-If the designed period is known at a reference radius \(R_\mathrm{ref}\),
-
-\[
-\Delta\theta = \frac{\Lambda_\mathrm{ref}}{R_\mathrm{ref}},
-\]
-
-and therefore
-
-\[
-\Lambda_\mathrm{design}(r)
-=
-\Lambda_\mathrm{ref}
-\frac{r}{R_\mathrm{ref}} .
-\]
-
-The center correction is performed by scanning candidate center positions around the initial estimate and selecting the center that makes the measured period curve best match the designed period curve.
-
-Importantly, the center correction should use period information only. Duty cycle should not be used in the optimization, because duty cycle is one of the physical quantities to be compared after correction.
-
-## Suggested Repository Structure
+## Public Layout
 
 ```text
 PFM_poling_analysis/
-│
-├─ README.md
-├─ main_analyze_one_device.m
-├─ main_analyze_all_devices.m
-│
-├─ config/
-│   ├─ config_E7_R1C2.m
-│   ├─ config_E7_R1C3.m
-│   └─ config_template.m
-│
-├─ functions/
-│   ├─ load_pfm_data.m
-│   ├─ sample_phase_along_arcs.m
-│   ├─ extract_period_duty_vs_radius.m
-│   ├─ optimize_center_by_period.m
-│   ├─ plot_summary_figure.m
-│   ├─ plot_compare_scans.m
-│   └─ save_processed_results.m
-│
-├─ raw_data/
-├─ processed_data/
-└─ figures/
+  config/                         batch configs and config template
+  functions/                      readers, extraction, center correction, plots
+  docs/                           workflow notes
+  local/                          local setup templates and ignored batches
+  main_generate_metadata_from_raw_folder.m
+  main_pick_initial_centers_for_batch.m
+  main_analyze_inphase_batch.m
+  main_analyze_inphase_selected.m
+  main_analyze_batch.m
+  main_select_scans_for_rework.m
+  main_pick_centers_selected.m
+  main_analyze_selected.m
 ```
 
-## Device and Scan Abstraction
+Root-level raw, metadata, figure, and processed-data folders are not part
+of the current layout. The corresponding names remain ignored so private
+data is not accidentally committed if an old workflow recreates them.
 
-The recommended abstraction is:
+## Private Batch Layout
 
 ```text
-one device → N PFM scans
+local/batches/<batchName>/
+  raw/                            raw txt/spm exports for this batch
+  metadata/
+    designs.csv
+    devices.csv
+    scans.csv
+  centers/
+    initial_centers_batch_<batchName>.mat
+    initial_centers_batch_<batchName>.csv
+  selected_scans/
+    selected_scans.csv
+  results/
+    inphase/
+      processed_data/
+      figures/
+      progress.log
+    phase/
+      processed_data/
+      figures/
 ```
 
-Each device has shared design parameters, such as:
+Batch configs call `configure_local_batch_paths`, so raw files, metadata,
+picked centers, selected-scan lists, and generated results resolve from the
+batch-local tree.
 
-- nominal center radius;
-- waveguide width;
-- designed period at a reference radius;
-- radius range used for analysis;
-- center-optimization settings.
+## Local Setup
 
-Each scan has its own measurement-specific parameters, such as:
+Copy the tracked templates before running root entry points:
 
-- raw data filename;
-- scan index;
-- initial center estimate;
-- optional position label;
-- optional notes about scan quality.
+```text
+local/local_paths_template.m         -> local/local_paths.m
+local/active_batch_config_template.m -> local/active_batch_config.m
+```
 
-Example:
+`local_paths.m` may point batches at an external private folder.
+`active_batch_config.m` selects the batch config used by root scripts.
+Both copied files are ignored by Git.
+
+## Batch Workflow
+
+Put raw txt/spm exports in the active batch `raw/` folder, then run:
 
 ```matlab
-cfg.deviceName = 'E7_R1C2';
-
-cfg.design.R0 = 30.0;                  % um
-cfg.design.w  = 1.0;                   % um
-
-cfg.design.periodRef.Rref = 30.0;      % um
-cfg.design.periodRef.LambdaRef = 2.5;  % um
-
-cfg.radius.rMin = 28.0;
-cfg.radius.rMax = 35.0;
-cfg.radius.dr   = 0.1;
-
-cfg.centerOpt.enable = true;
-cfg.centerOpt.searchRange = 2.0;       % um
-cfg.centerOpt.searchStep  = 0.05;      % um
-
-cfg.scans(1).scanID = 1;
-cfg.scans(1).fileName = 'Data_UF_2p5_r1c2_1_260511';
-cfg.scans(1).centerInitial = [xc1, yc1];
-cfg.scans(1).positionLabel = '';
-
-cfg.scans(2).scanID = 2;
-cfg.scans(2).fileName = 'Data_UF_2p5_r1c2_2_260511';
-cfg.scans(2).centerInitial = [xc2, yc2];
-cfg.scans(2).positionLabel = '';
+main_generate_metadata_from_raw_folder
 ```
 
-## Basic Workflow
-
-1. Define a device-level configuration file.
-2. Add all PFM scans belonging to the same device.
-3. Run `main_analyze_one_device.m`.
-4. For each scan:
-   - load PFM data;
-   - plot the raw phase map;
-   - sample phase along circular arcs;
-   - extract period and duty cycle versus radius;
-   - optimize the center using the designed period curve;
-   - re-extract period and duty cycle using the optimized center;
-   - save processed data and summary figures.
-5. Compare all scans from the same device.
-
-## Recommended Saved Results
-
-Each processed scan should save both the initial and corrected analysis results:
+Review the generated `metadata/designs.csv` and set the radius and designed
+period entries before center picking. Then run:
 
 ```matlab
-result.rawFileName
-result.deviceName
-result.scanID
-
-result.centerInitial
-result.centerOptimized
-result.centerShift
-
-result.radiusList
-
-result.period_before
-result.period_after
-result.period_std_after
-
-result.duty_after
-result.duty_std_after
-
-result.WG_period_mean
-result.WG_period_std
-result.WG_duty_mean
-result.WG_duty_std
-
-result.config
+main_pick_initial_centers_for_batch
+main_analyze_inphase_batch
 ```
 
-The all-scan summary can additionally save:
+For the phase workflow:
 
 ```matlab
-summary.deviceName
-summary.scanIDs
-summary.centerInitial_all
-summary.centerOptimized_all
-summary.WG_period_mean_all
-summary.WG_duty_mean_all
-summary.WG_period_std_all
-summary.WG_duty_std_all
+main_analyze_batch
 ```
 
-## Output Figures
+## Rework Workflow
 
-For each scan, the standard summary figure should contain:
+`main_select_scans_for_rework` asks whether the scan list should come from
+the inphase or phase batch summary and writes the selected list into the
+active batch.
 
-1. PFM phase map with circular radius markers and waveguide region.
-2. Phase traces along selected circular arcs.
-3. Duty cycle versus radius.
-4. Poling period versus radius.
-
-For each device, the comparison figure may contain:
-
-1. Period versus radius for all scans before center correction.
-2. Period versus radius for all scans after center correction.
-3. Duty cycle versus radius after center correction.
-4. Waveguide-region averaged duty cycle for all scans.
-
-## Notes
-
-- The designed period should be used only as a geometric reference for center correction.
-- Duty-cycle differences should be interpreted after center correction.
-- Large local period outliers may indicate failed domain detection, merged domains, missing domains, or poor PFM contrast.
-- The analysis should always save the configuration used for each run, so that every result can be reproduced later.
-- Raw data files are usually not tracked by Git if they are large or private.
-
-## Git Ignore Recommendation
-
-A typical `.gitignore` may include:
-
-```gitignore
-# MATLAB temporary files
-*.asv
-*.m~
-*.slxc
-
-# Large or private data
-raw_data/
-processed_data/
-figures/
-
-# Local settings
-local/
-*.mat
+```matlab
+main_select_scans_for_rework
+main_pick_centers_selected        % only when center repicking is needed
+main_analyze_inphase_selected     % inphase selected scans
+main_analyze_selected             % phase selected scans
 ```
 
-If some processed examples or representative figures should be tracked, remove the corresponding lines or add exceptions explicitly.
+Selected-only analysis reprocesses selected scans, reuses existing results
+for the others, and regenerates device and batch summaries.
+
+## Metadata
+
+The active batch metadata lives in `local/batches/<batchName>/metadata/`.
+
+`designs.csv` stores design geometry and analysis radii:
+
+```text
+designID, R0_um, w_um, Rref_um, LambdaRef_um, rMin_um, rMax_um, dr_um
+```
+
+Designed period is evaluated as:
+
+```text
+Lambda_design(r) = LambdaRef_um * r / Rref_um
+```
+
+`devices.csv` maps devices to designs and stores device notes.
+`scans.csv` maps scans to raw file names and optional per-scan overrides.
+Interactive center picking normally writes initial centers to `centers/`.
+
+## Center Handling
+
+Initial centers are manually approximated from radial domain lines. Center
+optimization uses period only:
+
+```text
+candidate center
+  -> extract period over the fit radius range
+  -> compare with designed period
+  -> keep the center with the smallest period error metric
+```
+
+The inphase optimizer reports scan and search progress to the console and
+to `results/inphase/progress.log`. When a best candidate lands within one
+search step of the first-pass boundary, it runs one smaller second pass
+biased toward the unexplored outward side. If that refinement also reaches
+the outward boundary, it records a warning that the manual center should be
+reviewed.
+
+Duty cycle is interpreted after center correction. It is not the center
+optimization objective.
+
+## Repo Hygiene
+
+Do not commit raw data, generated metadata CSVs, selected-scan CSVs, picked
+center files, processed MAT files, generated figures, logs, or copied local
+settings. The tracked repo should contain code, docs, templates, and batch
+configs only.

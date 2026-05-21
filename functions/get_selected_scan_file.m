@@ -1,12 +1,11 @@
 function selectedFile = get_selected_scan_file(batchCfg)
 %GET_SELECTED_SCAN_FILE Return batch-specific selected-scans CSV path.
 
-localDir = fullfile(batchCfg.paths.projectRoot, 'local');
-if ~exist(localDir, 'dir')
-    mkdir(localDir);
+selectionRoot = batchCfg.paths.selectionRoot;
+if ~exist(selectionRoot, 'dir')
+    mkdir(selectionRoot);
 end
 
-selectedFile = fullfile(localDir, ...
-    sprintf('selected_scans_batch_%s.csv', batchCfg.batchName));
+selectedFile = fullfile(selectionRoot, 'selected_scans.csv');
 
 end

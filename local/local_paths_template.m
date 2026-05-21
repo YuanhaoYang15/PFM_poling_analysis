@@ -7,24 +7,19 @@ function paths = local_paths_template()
 %   2. Edit the paths below for your own computer.
 %   3. local_paths.m is ignored by Git and should not be committed.
 %
-% This lets the code project stay clean while raw data can live anywhere.
+% This lets the code project stay clean while private batches can live
+% inside local/batches or in an external private directory.
 
 paths = struct();
 
-% Raw data roots for different PFM/poling test batches.
-% These are examples based on your current folder organization.
-paths.rawRoots = struct();
+projectRoot = fileparts(fileparts(mfilename('fullpath')));
 
-paths.rawRoots.batch_20260511 = ...
-    'D:\Project\NUS\Project\Single Photon Nonlinearity\Image\20260511';
+% Default private batch tree:
+%   local/batches/<batchName>/{raw,metadata,centers,results}
+paths.batchParent = fullfile(projectRoot, 'local', 'batches');
 
-paths.rawRoots.batch_20260506 = ...
-    'D:\Project\NUS\Project\Single Photon Nonlinearity\Image\20260506';
-
-% Optional: external output root.
-% Leave empty to save processed_data/ and figures/ inside the code project.
-% Example:
-% paths.outputRoot = 'D:\Project\NUS\Project\Single Photon Nonlinearity\PFM_analysis_outputs';
-paths.outputRoot = '';
+% Optional special-case roots for batches stored elsewhere.
+paths.batchRoots = struct();
+% paths.batchRoots.batch_20260511 = 'D:\...\PFM_batches\20260511';
 
 end

@@ -216,18 +216,44 @@ function [center, accepted] = pick_center_by_single_point(data, cfg, scanCfg, ra
 end
 
 function show_phase_image(data, cfg)
-    imagesc(data.X(1,:), data.Y(:,1), data.phase);
+    [signal, signalLabel] = get_center_picker_signal(data, cfg);
+    imagesc(data.X(1,:), data.Y(:,1), signal);
     set(gca,'YDir','normal');
     axis image;
     colormap parula;
     colorbar;
-    try
-        caxis(cfg.plot.phaseCLim);
-    catch
-        caxis([-180 180]);
+    if strcmpi(signalLabel, 'phase')
+        try
+            caxis(cfg.plot.phaseCLim);
+        catch
+            caxis([-180 180]);
+        end
     end
     xlabel('x (\mum)');
     ylabel('y (\mum)');
+end
+
+function [signal, signalLabel] = get_center_picker_signal(data, cfg)
+    signalLabel = 'phase';
+    if isfield(cfg, 'centerPicker') && isfield(cfg.centerPicker, 'displaySignal') && ...
+            ~isempty(cfg.centerPicker.displaySignal)
+        signalLabel = char(lower(string(cfg.centerPicker.displaySignal)));
+    end
+
+    switch signalLabel
+        case 'inphase'
+            if isfield(data, 'channels') && isfield(data.channels, 'LS_PR_Inphase')
+                signal = data.channels.LS_PR_Inphase;
+            elseif isfield(data, 'inphase')
+                signal = data.inphase;
+            else
+                error('Center picker requested inphase display, but LS_PR_Inphase is unavailable.');
+            end
+        case 'phase'
+            signal = data.phase;
+        otherwise
+            error('Unknown cfg.centerPicker.displaySignal: %s', signalLabel);
+    end
 end
 
 function h = draw_center_overlay(center, cfg)

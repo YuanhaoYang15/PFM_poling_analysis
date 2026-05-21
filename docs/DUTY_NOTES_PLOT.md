@@ -57,5 +57,5 @@ batchCfg.plot.dutyNotesXLabelMode = 'device';  % deviceID-scanID
 The output is saved as:
 
 ```text
-figures/<batchName>/Batch_duty_notes_<batchName>.png
+local/batches/<batchName>/results/phase/figures/Batch_duty_notes_<batchName>.png
 ```

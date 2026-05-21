@@ -23,6 +23,7 @@ cfg.plot.periodErrorYLimHalfRange = get_nested_field(cfg, 'plot.periodErrorYLimH
 if ~isfield(cfg, 'centerPicker'); cfg.centerPicker = struct(); end
 cfg.centerPicker.skipExisting = get_nested_field(cfg, 'centerPicker.skipExisting', true);
 cfg.centerPicker.method = get_nested_field(cfg, 'centerPicker.method', 'manual_radial_lines');
+cfg.centerPicker.displaySignal = get_nested_field(cfg, 'centerPicker.displaySignal', 'phase');
 
 if ~isfield(cfg, 'centerOpt'); cfg.centerOpt = struct(); end
 cfg.centerOpt.enable = get_nested_field(cfg, 'centerOpt.enable', true);
@@ -35,6 +36,13 @@ cfg.centerOpt.minValidRadii = get_nested_field(cfg, 'centerOpt.minValidRadii', 3
 cfg.centerOpt.minNPeriods = get_nested_field(cfg, 'centerOpt.minNPeriods', 2);
 cfg.centerOpt.maxPeriodStd_um = get_nested_field(cfg, 'centerOpt.maxPeriodStd_um', Inf);
 cfg.centerOpt.maxAbsPeriodError_um = get_nested_field(cfg, 'centerOpt.maxAbsPeriodError_um', Inf);
+if ~isfield(cfg.centerOpt, 'edgeRefine'); cfg.centerOpt.edgeRefine = struct(); end
+cfg.centerOpt.edgeRefine.enable = get_nested_field(cfg, 'centerOpt.edgeRefine.enable', true);
+cfg.centerOpt.edgeRefine.maxPasses = get_nested_field(cfg, 'centerOpt.edgeRefine.maxPasses', 2);
+cfg.centerOpt.edgeRefine.rangeScale = get_nested_field(cfg, 'centerOpt.edgeRefine.rangeScale', 0.5);
+cfg.centerOpt.edgeRefine.outwardFraction = get_nested_field(cfg, 'centerOpt.edgeRefine.outwardFraction', 0.75);
+cfg.centerOpt.edgeRefine.boundaryStepTolerance = get_nested_field( ...
+    cfg, 'centerOpt.edgeRefine.boundaryStepTolerance', 1.0);
 
 if ~isfield(cfg, 'arc'); cfg.arc = struct(); end
 cfg.arc.thetaRange = get_nested_field(cfg, 'arc.thetaRange', []);

@@ -1,6 +1,18 @@
-# Local Settings
+# Local Data And Settings
 
-This folder stores machine-specific settings and manually picked centers.
+This folder stores ignored private batch data and machine-specific state.
+
+New batch contents live together under:
+
+```text
+local/batches/<batchName>/
+  raw/
+  metadata/
+  centers/
+  selected_scans/
+  results/inphase/
+  results/phase/
+```
 
 Copy:
 
@@ -14,7 +26,8 @@ to:
 local_paths.m
 ```
 
-and edit the raw data roots.
+and edit the optional private batch parent if local batches should live
+outside this repo.
 
 Copy:
 
@@ -30,4 +43,10 @@ active_batch_config.m
 
 and choose which batch to run.
 
-Files such as `local_paths.m`, `active_batch_config.m`, and picked-center `.mat` files are ignored by Git.
+The copied `active_batch_config.m` returns a batch config such as
+`config_batch_20260521_3()`. The tracked template keeps this setup visible
+without committing the active private choice.
+
+Files such as `local_paths.m`, `active_batch_config.m`, local batch raw
+data, metadata, centers, results, selected-scan lists, and logs are
+ignored by Git.

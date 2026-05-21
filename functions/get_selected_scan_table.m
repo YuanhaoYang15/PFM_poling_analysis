@@ -2,19 +2,23 @@ function selectedTable = get_selected_scan_table(batchCfg, required)
 %GET_SELECTED_SCAN_TABLE Read selected-scans table.
 %
 % Preferred:
-%   local/selected_scans_batch_<batchName>.csv
+%   local/batches/<batchName>/selected_scans/selected_scans.csv
 % Fallback:
-%   local/selected_scans.csv
+%   old local/selected_scans_batch_<batchName>.csv or local/selected_scans.csv
 
 if nargin < 2
     required = false;
 end
 
 batchFile = get_selected_scan_file(batchCfg);
+legacyBatchFile = fullfile(batchCfg.paths.projectRoot, 'local', ...
+    sprintf('selected_scans_batch_%s.csv', batchCfg.batchName));
 legacyFile = fullfile(batchCfg.paths.projectRoot, 'local', 'selected_scans.csv');
 
 if isfile(batchFile)
     filePath = batchFile;
+elseif isfile(legacyBatchFile)
+    filePath = legacyBatchFile;
 elseif isfile(legacyFile)
     filePath = legacyFile;
 else
