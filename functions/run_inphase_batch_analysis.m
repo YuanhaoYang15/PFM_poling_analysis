@@ -135,6 +135,40 @@ for dd = 1:height(meta.devices)
             continue;
         end
 
+        if ~requestedSelectedOnly && batchCfg.run.skipExisting && ...
+                ~batchCfg.run.forceReprocess
+            [result, foundExisting] = load_processed_result_if_available(cfgScan, scanID);
+            if foundExisting
+                doneCounter = doneCounter + 1;
+                report_progress(logFile, sprintf('SCAN %02d/%02d REUSE %s', ...
+                    doneCounter, totalScans, cfgScan.progress.scanLabel));
+
+                if batchCfg.run.regenerateFiguresForExisting
+                    fig = plot_inphase_summary_figure(cfgScan, result);
+                    figName = sprintf('Summary_%s_scan_%d.png', char(deviceID), scanID);
+                    save_analysis_figure(fig, fullfile(cfgScan.paths.figures, figName), cfgScan);
+                end
+
+                deviceResults = append_struct_result_local(deviceResults, result);
+                resultCounter = resultCounter + 1;
+                allResults(resultCounter).result = result;
+
+                lambdaDesignAtR0 = cfgScan.design.periodRef.LambdaRef * ...
+                    cfgScan.design.R0 / cfgScan.design.periodRef.Rref;
+                periodError = result.WG_period_mean - lambdaDesignAtR0;
+
+                allRows(end+1,:) = { ...
+                    string(batchName), deviceID, designID, scanID, rawName, ...
+                    result.centerInitial(1), result.centerInitial(2), ...
+                    result.centerOptimized(1), result.centerOptimized(2), ...
+                    result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
+                    result.WG_period_mean, result.WG_period_std, periodError, ...
+                    result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean, ...
+                    string(result.signalField), string(result.dutyDefinition)}; %#ok<SAGROW>
+                continue;
+            end
+        end
+
         report_progress(logFile, sprintf('SCAN %02d/%02d START %s', ...
             doneCounter + 1, totalScans, cfgScan.progress.scanLabel));
         rawFile = resolve_raw_txt_file(batchCfg.paths.rawTxtRoot, rawName);
