@@ -12,6 +12,7 @@ local/batches/<batchName>/
   selected_scans/
   results/inphase/
   results/phase/
+  results/afm/
 ```
 
 Copy:
@@ -47,6 +48,20 @@ The copied `active_batch_config.m` returns a batch config such as
 `config_batch_20260521_3()`. The tracked template keeps this setup visible
 without committing the active private choice.
 
-Files such as `local_paths.m`, `active_batch_config.m`, local batch raw
-data, metadata, centers, results, selected-scan lists, and logs are
-ignored by Git.
+AFM runs use a separate selector. Copy:
+
+```matlab
+active_afm_batch_config_template.m
+```
+
+to:
+
+```matlab
+active_afm_batch_config.m
+```
+
+and choose which AFM batch config to run (see `docs/AFM_MODULE.md`).
+
+Files such as `local_paths.m`, `active_batch_config.m`,
+`active_afm_batch_config.m`, local batch raw data, metadata, centers,
+results, selected-scan lists, and logs are ignored by Git.

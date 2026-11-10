@@ -17,7 +17,14 @@ if exist('selectedOnly', 'var') && ~isempty(selectedOnly)
 else
     requestedSelectedOnly = false;
 end
-clearvars -except requestedBatchName requestedCenterMode requestedSelectedOnly;
+if exist('regenerateFiguresForExisting', 'var') && ...
+        ~isempty(regenerateFiguresForExisting)
+    requestedRegenerateFigures = logical(regenerateFiguresForExisting);
+else
+    requestedRegenerateFigures = [];
+end
+clearvars -except requestedBatchName requestedCenterMode ...
+    requestedSelectedOnly requestedRegenerateFigures;
 clc; close all;
 
 projectRoot = fileparts(fileparts(mfilename('fullpath')));
@@ -31,6 +38,9 @@ batchName = char(requestedBatchName);
 cfgFcn = str2func(['config_batch_', batchName]);
 batchCfg = cfgFcn();
 batchCfg = set_default_batch_options(batchCfg);
+if ~isempty(requestedRegenerateFigures)
+    batchCfg.run.regenerateFiguresForExisting = requestedRegenerateFigures;
+end
 batchCfg.plot.showFigures = false;
 batchCfg.plot.saveFigures = true;
 batchCfg.plot.closeAfterSave = true;

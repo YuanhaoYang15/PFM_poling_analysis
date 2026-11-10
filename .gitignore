@@ -56,10 +56,12 @@ local/*
 !local/README.md
 !local/local_paths_template.m
 !local/active_batch_config_template.m
+!local/active_afm_batch_config_template.m
 
 # Explicit local files
 local/local_paths.m
 local/active_batch_config.m
+local/active_afm_batch_config.m
 local/initial_centers_*.mat
 local/initial_centers_*.csv
 local/initial_centers_*_snippet.m

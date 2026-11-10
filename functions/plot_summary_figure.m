@@ -7,7 +7,6 @@ data = result.data;
 ana = result.after;
 rList = result.radiusList;
 center = result.centerOptimized;
-
 lambdaDesign = design_period(rList, cfg);
 
 wgMin = cfg.design.R0 - cfg.design.w/2;
@@ -18,119 +17,119 @@ if ~cfg.plot.showFigures
     visibleState = 'off';
 end
 
-fig = figure('Color', 'w', 'Position', [80, 80, 1450, 820], ...
-    'Visible', visibleState);
+fig = figure('Color', 'w', 'Visible', visibleState, 'WindowStyle', 'normal');
+set(fig, 'Position', [80, 80, 1450, 820]);
+layout = tiledlayout(fig, 2, 2, ...
+    'TileSpacing', 'compact', 'Padding', 'compact');
 
 %% 1. Phase map
-subplot(2,2,1);
-imagesc(data.X(1,:), data.Y(:,1), data.phase);
-axis image;
-set(gca, 'YDir', 'normal');
-colorbar;
-caxis(cfg.plot.phaseCLim);
-xlabel('x (\mum)');
-ylabel('y (\mum)');
-title('PFM phase map with selected radii', 'Interpreter', cfg.plot.interpreter);
-hold on;
-
-hCenter = plot(center(1), center(2), 'rx', 'LineWidth', 1.5, 'MarkerSize', 8);
+axMap = nexttile(layout, 1);
+imagesc(axMap, data.X(1,:), data.Y(:,1), data.phase);
+axis(axMap, 'image');
+set(axMap, 'YDir', 'normal');
+colorbar(axMap);
+clim(axMap, cfg.plot.phaseCLim);
+xlabel(axMap, 'x (\mum)');
+ylabel(axMap, 'y (\mum)');
+title(axMap, {'PFM phase map with selected radii', ...
+    sprintf('WG r=[%.3f, %.3f] um | R0=%.3f um | w=%.3f um', ...
+    wgMin, wgMax, cfg.design.R0, cfg.design.w)}, ...
+    'Interpreter', 'none');
+hold(axMap, 'on');
 
 thetaPlot = linspace(-pi, pi, 1000);
 rStart = cfg.radius.rMin;
 rEnd = cfg.radius.rMax;
 
-hRStart = plot(center(1) + rStart*cos(thetaPlot), center(2) + rStart*sin(thetaPlot), ...
-    'w-', 'LineWidth', 1.2);
-hREnd = plot(center(1) + rEnd*cos(thetaPlot), center(2) + rEnd*sin(thetaPlot), ...
-    'm-', 'LineWidth', 1.2);
+hCenter = plot(axMap, center(1), center(2), 'rx', ...
+    'LineWidth', 1.5, 'MarkerSize', 8);
+hRStart = plot(axMap, center(1) + rStart*cos(thetaPlot), ...
+    center(2) + rStart*sin(thetaPlot), 'w-', 'LineWidth', 1.2);
+hREnd = plot(axMap, center(1) + rEnd*cos(thetaPlot), ...
+    center(2) + rEnd*sin(thetaPlot), 'm-', 'LineWidth', 1.2);
 
-% Waveguide boundary arcs
-plot(center(1) + wgMin*cos(thetaPlot), center(2) + wgMin*sin(thetaPlot), ...
-    '-', 'Color', [0.8 0.8 0.8], 'LineWidth', 1.0);
-plot(center(1) + wgMax*cos(thetaPlot), center(2) + wgMax*sin(thetaPlot), ...
-    '-', 'Color', [0.8 0.8 0.8], 'LineWidth', 1.0);
+plot(axMap, center(1) + wgMin*cos(thetaPlot), ...
+    center(2) + wgMin*sin(thetaPlot), '-', ...
+    'Color', [0.8 0.8 0.8], 'LineWidth', 1.0);
+plot(axMap, center(1) + wgMax*cos(thetaPlot), ...
+    center(2) + wgMax*sin(thetaPlot), '-', ...
+    'Color', [0.8 0.8 0.8], 'LineWidth', 1.0);
 
-text(0.70, 0.82, sprintf(['Waveguide region:\n', ...
-    'R_0 = %.3f \\mum\nw = %.3f \\mum\n[%.3f, %.3f] \\mum'], ...
-    cfg.design.R0, cfg.design.w, wgMin, wgMax), ...
-    'Units', 'normalized', 'BackgroundColor', 'w', 'EdgeColor', 'none', ...
-    'Interpreter', 'tex');
-
-legend([hCenter, hRStart, hREnd], ...
-    {'center', sprintf('r = %.3f \\mum', rStart), sprintf('r = %.3f \\mum', rEnd)}, ...
-    'Location', 'northwest', 'Interpreter', 'tex');
+legend(axMap, [hCenter, hRStart, hREnd], ...
+    {'center', sprintf('r = %.3f um', rStart), ...
+    sprintf('r = %.3f um', rEnd)}, ...
+    'Location', 'southoutside', 'Orientation', 'horizontal', ...
+    'NumColumns', 3, 'Box', 'off', 'Interpreter', 'none');
 
 %% 2. Phase along start/end radii
-subplot(2,2,2);
-hold on; grid on; box on;
-
+axArc = nexttile(layout, 2);
+hold(axArc, 'on');
+grid(axArc, 'on');
+box(axArc, 'on');
 idxStart = 1;
 idxEnd = numel(ana.arc);
-
 if ~isempty(ana.arc(idxStart).s)
-    plot(ana.arc(idxStart).s, ana.arc(idxStart).phase, '-', 'LineWidth', 1.2);
+    plot(axArc, ana.arc(idxStart).s, ana.arc(idxStart).phase, '-', ...
+        'LineWidth', 1.2);
 end
-
 if ~isempty(ana.arc(idxEnd).s)
-    plot(ana.arc(idxEnd).s, ana.arc(idxEnd).phase, '-', 'LineWidth', 1.2);
+    plot(axArc, ana.arc(idxEnd).s, ana.arc(idxEnd).phase, '-', ...
+        'LineWidth', 1.2);
 end
-
-xlabel('arc length s (\mum)');
-ylabel('Phase (deg), wrapped to [-180, 180]');
-title('PFM phase along circular arcs at start/end radii', ...
+xlabel(axArc, 'arc length s (\mum)');
+ylabel(axArc, 'Phase (deg), wrapped to [-180, 180]');
+title(axArc, 'PFM phase along circular arcs at start/end radii', ...
     'Interpreter', cfg.plot.interpreter);
-legend({sprintf('r = %.3f \\mum', rStart), sprintf('r = %.3f \\mum', rEnd)}, ...
-    'Location', 'best', 'Interpreter', 'tex');
+legend(axArc, {sprintf('r = %.3f um', rStart), ...
+    sprintf('r = %.3f um', rEnd)}, ...
+    'Location', 'best', 'Interpreter', 'none');
 
 %% 3. Duty cycle vs radius
-subplot(2,2,3);
-hold on; grid on; box on;
-
+axDuty = nexttile(layout, 3);
+hold(axDuty, 'on');
+grid(axDuty, 'on');
+box(axDuty, 'on');
 shade_radius_region(wgMin, wgMax, [0, 1], cfg);
-errorbar(rList, ana.dutyMean, ana.dutyStd, 'o-', 'LineWidth', 1.2, ...
-    'MarkerSize', 3, 'CapSize', 4);
-
-xlabel('radius r (\mum)');
-ylabel('duty cycle');
-ylim([0, 1]);
-xlim([cfg.radius.rMin, cfg.radius.rMax]);
-title('Poling duty cycle vs radius, error bar = STD across periods', ...
+errorbar(axDuty, rList, ana.dutyMean, ana.dutyStd, 'o-', ...
+    'LineWidth', 1.2, 'MarkerSize', 3, 'CapSize', 4);
+xlabel(axDuty, 'radius r (\mum)');
+ylabel(axDuty, 'duty cycle');
+ylim(axDuty, [0, 1]);
+xlim(axDuty, [cfg.radius.rMin, cfg.radius.rMax]);
+title(axDuty, 'Poling duty cycle vs radius, error bar = STD across periods', ...
     'Interpreter', cfg.plot.interpreter);
-
 txt = sprintf('WG-region average:\n<Duty> = %.4f\nstd = %.4f', ...
     result.WG_duty_mean, result.WG_duty_std);
-text(0.60, 0.13, txt, 'Units', 'normalized', ...
+text(axDuty, 0.60, 0.13, txt, 'Units', 'normalized', ...
     'BackgroundColor', 'w', 'EdgeColor', 'none', 'Interpreter', 'none');
 
 %% 4. Poling period vs radius
-subplot(2,2,4);
-hold on; grid on; box on;
-
+axPeriod = nexttile(layout, 4);
+hold(axPeriod, 'on');
+grid(axPeriod, 'on');
+box(axPeriod, 'on');
 yl = period_ylim_from_design(lambdaDesign, cfg);
 hWG = shade_radius_region(wgMin, wgMax, yl, cfg);
-
-hMeas = errorbar(rList, ana.periodMean, ana.periodStd, 'o-', 'LineWidth', 1.2, ...
-    'MarkerSize', 3, 'CapSize', 4);
-hDesign = plot(rList, lambdaDesign, 'k--', 'LineWidth', 1.2);
-
-xlabel('radius r (\mum)');
-ylabel('poling period \Lambda (\mum)');
-xlim([cfg.radius.rMin, cfg.radius.rMax]);
-ylim(yl);
-title('Poling period vs radius, error bar = STD across periods', ...
+hMeas = errorbar(axPeriod, rList, ana.periodMean, ana.periodStd, 'o-', ...
+    'LineWidth', 1.2, 'MarkerSize', 3, 'CapSize', 4);
+hDesign = plot(axPeriod, rList, lambdaDesign, 'k--', 'LineWidth', 1.2);
+xlabel(axPeriod, 'radius r (\mum)');
+ylabel(axPeriod, 'poling period \Lambda (\mum)');
+xlim(axPeriod, [cfg.radius.rMin, cfg.radius.rMax]);
+ylim(axPeriod, yl);
+title(axPeriod, 'Poling period vs radius, error bar = STD across periods', ...
     'Interpreter', cfg.plot.interpreter);
-
-legend([hWG, hMeas, hDesign], {'WG region', 'measured', 'design'}, ...
+legend(axPeriod, [hWG, hMeas, hDesign], ...
+    {'WG region', 'measured', 'design'}, ...
     'Location', 'best', 'Interpreter', 'none');
-
 txt = sprintf(['WG-region average:\n', ...
     '<Period> = %.4f um\nstd = %.4f um\n<Nperiods> = %.2f'], ...
     result.WG_period_mean, result.WG_period_std, result.WG_Nperiod_mean);
-text(0.61, 0.12, txt, 'Units', 'normalized', ...
+text(axPeriod, 0.61, 0.12, txt, 'Units', 'normalized', ...
     'BackgroundColor', 'w', 'EdgeColor', 'none', 'Interpreter', 'none');
 
 rawLabel = get_result_label(result);
-sgtitle(sprintf('%s | scan %d | %s | center shift = [%.3f, %.3f] um', ...
+title(layout, sprintf('%s | scan %d | %s | center shift = [%.3f, %.3f] um', ...
     result.deviceName, result.scanID, rawLabel, ...
     result.centerShift(1), result.centerShift(2)), ...
     'FontWeight', 'bold', 'Interpreter', 'none');

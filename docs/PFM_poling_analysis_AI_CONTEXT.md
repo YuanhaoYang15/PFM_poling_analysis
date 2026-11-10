@@ -3,6 +3,14 @@
 This file is a compact handoff for future work on the repo. The codebase
 is a MATLAB batch workflow for circular PFM poling analysis.
 
+## Agent operating rules
+
+All Codex/Agent work in this repository must follow the project-level
+instructions in `../AGENTS.md`, including its mandatory process, terminal,
+and resource cleanup rules. This file provides domain and workflow context;
+`../AGENTS.md` is authoritative for agent behavior if the two documents ever
+conflict.
+
 ## Current architecture
 
 The tracked repo contains code, docs, templates, and batch configs. Private
@@ -73,6 +81,9 @@ main_analyze_selected.m
 main_clear_selected_scans.m
 main_plot_batch_duty_notes.m
 main_simplify_device_metadata.m
+main_afm_generate_metadata.m
+main_afm_plot_channels.m
+main_afm_analyze_batch.m
 ```
 
 ## Local setup
@@ -98,7 +109,9 @@ paths.batchParent = fullfile(projectRoot, 'local', 'batches');
 paths.batchRoots.batch_20260521_3 = 'D:\private\PFM_batches\20260521_3';
 ```
 
-`active_batch_config.m` returns the config used by root scripts.
+`active_batch_config.m` returns the config used by root scripts. AFM runs
+use a separate selector, `local/active_afm_batch_config.m` (copied from
+`local/active_afm_batch_config_template.m`).
 
 ## Normal batch workflow
 
@@ -122,6 +135,51 @@ Run the phase workflow only when a phase result is needed:
 ```matlab
 main_analyze_batch
 ```
+
+## AFM module
+
+AFM topography is a separate module from the PFM duty-cycle workflow. It
+uses its own config family (`config_afm_<batch>.m`), selector
+(`local/active_afm_batch_config.m`), and results tree
+(`results/afm/{raw_qc,processed_data,figures}`).
+
+Workflow:
+
+```matlab
+main_afm_generate_metadata   % metadata/afm_scans.csv (auto columns refreshed,
+                             % manual columns preserved)
+main_afm_plot_channels       % raw-channel QC heatmaps
+main_afm_analyze_batch       % leveling + cross-ridge profile + step heights
+```
+
+Key functions:
+
+```text
+read_nanoscope_txt_channels   generic NanoScope txt reader; the PFM legacy
+                              reader is a thin wrapper with PFM header tokens
+load_afm_data                 channels -> X/Y + height + cross-check
+detect_afm_waveguide_angle    gradient-orientation histogram -> waveguide axis
+afm_farfield_mask             ridge edges, moat minima, far-field masks
+level_afm_farfield            linear plane fitted on far-field pixels only
+extract_afm_profile           median profile perpendicular to the waveguide
+extract_afm_step              ridge top / far field / moat step heights
+extract_afm_sidewall          10-90% sidewall angles (median + per slice)
+plot_afm_3d_surface           per-scan 3-D surface PNG (vertical exaggeration)
+plot_afm_sidewall_qc          angle-definition and angle-vs-slice figures
+```
+
+`main_afm_plot_sidewall_qc` regenerates the two sidewall illustration
+figures for every included scan from the saved processed MAT files.
+
+The analysis chain is: detect the waveguide angle, level the height with a
+plane fitted only on the far-field regions outside the ridge and trenches,
+then slice perpendicular to the waveguide. `stepLeft_nm`/`stepRight_nm` are
+ridge top minus far field (primary etch depth);
+`stepMoatLeft_nm`/`stepMoatRight_nm` are ridge top minus the moat next to
+the ridge. `cfg.afm.heightField` defaults to `Height_Sensor`; `Height` is
+reported as a cross-check because the two channels are differently
+calibrated. Details and the summary column list are in
+`docs/AFM_MODULE.md`.
 
 ## Metadata
 
