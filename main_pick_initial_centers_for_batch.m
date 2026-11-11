@@ -1,6 +1,7 @@
 %% Pick approximate initial centers for all missing centers in the active batch
+% Optional for the default inphase workflow; use after inspecting center QC.
 % Default behavior:
-%   - Existing centers in local/initial_centers_batch_<batch>.mat are skipped.
+%   - Existing centers in the active batch centers/ folder are skipped.
 %   - Missing centers are picked interactively.
 %
 % To force re-picking a few scans, use:

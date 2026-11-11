@@ -14,6 +14,7 @@ end
 v = get_optional_numeric(selectedRow, 'centerSearchRange_um');
 if isfinite(v)
     cfgScan.centerOpt.searchRange = v;
+    cfgScan.centerOpt.coherence.localRange_um = v;
 end
 
 v = get_optional_numeric(selectedRow, 'centerSearchStep_um');

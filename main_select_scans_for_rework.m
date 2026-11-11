@@ -37,14 +37,32 @@ fprintf('Select scans for rework | batch %s | basis %s\n', batchCfg.batchName, s
 fprintf('Summary: %s\n', summaryCsv);
 fprintf('========================================\n\n');
 
-fprintf('%5s  %-16s  %-6s  %-24s  %10s  %10s  %10s\n', ...
-    'Index', 'deviceID', 'scanID', 'rawName', 'periodErr', 'dutyMean', 'shiftAbs');
+centerFlag = false(height(S), 1);
+if ismember('centerFlag', S.Properties.VariableNames)
+    centerFlag = ismember(lower(string(S.centerFlag)), ["true", "1"]);
+end
+fprintf('%5s %1s %-16s  %-6s  %-24s  %10s  %10s  %10s\n', ...
+    'Index', '!', 'deviceID', 'scanID', 'rawName', 'periodErr', 'dutyMean', 'shiftAbs');
 fprintf('%s\n', repmat('-', 1, 95));
 
 for ii = 1:height(S)
-    fprintf('%5d  %-16s  %-6d  %-24s  %+10.4f  %10.4f  %10.4f\n', ...
-        ii, char(S.deviceID(ii)), double(S.scanID(ii)), char(S.rawName(ii)), ...
+    marker = ' ';
+    if centerFlag(ii); marker = '!'; end
+    fprintf('%5d %1s %-16s  %-6d  %-24s  %+10.4f  %10.4f  %10.4f\n', ...
+        ii, marker, char(S.deviceID(ii)), double(S.scanID(ii)), char(S.rawName(ii)), ...
         double(S.WG_period_error_um(ii)), double(S.WG_duty_mean(ii)), double(S.centerShiftAbs_um(ii)));
+end
+
+if ismember('centerFlag', S.Properties.VariableNames)
+    flagged = find(centerFlag);
+    for ii = flagged(:).'
+        reason = "";
+        if ismember('centerFlagReason', S.Properties.VariableNames)
+            reason = string(S.centerFlagReason(ii));
+        end
+        fprintf('  ! %d %s: %s\n', ii, char(S.rawName(ii)), char(reason));
+    end
+    fprintf('Suggested flagged indices: %s\n', mat2str(flagged(:).'));
 end
 
 fprintf('\nExamples: [2 5 10], 2, or [] to cancel.\n\n');

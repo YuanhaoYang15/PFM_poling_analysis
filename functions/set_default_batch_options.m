@@ -25,8 +25,13 @@ cfg.centerPicker.skipExisting = get_nested_field(cfg, 'centerPicker.skipExisting
 cfg.centerPicker.method = get_nested_field(cfg, 'centerPicker.method', 'manual_radial_lines');
 cfg.centerPicker.displaySignal = get_nested_field(cfg, 'centerPicker.displaySignal', 'phase');
 
+if ~isfield(cfg, 'centerInit'); cfg.centerInit = struct(); end
+cfg.centerInit.method = get_nested_field(cfg, 'centerInit.method', 'auto');
+cfg.centerInit.preferManual = get_nested_field(cfg, 'centerInit.preferManual', true);
+
 if ~isfield(cfg, 'centerOpt'); cfg.centerOpt = struct(); end
 cfg.centerOpt.enable = get_nested_field(cfg, 'centerOpt.enable', true);
+cfg.centerOpt.method = get_nested_field(cfg, 'centerOpt.method', 'coherence');
 cfg.centerOpt.searchRange = get_nested_field(cfg, 'centerOpt.searchRange', 1.0);
 cfg.centerOpt.searchStep = get_nested_field(cfg, 'centerOpt.searchStep', 0.05);
 cfg.centerOpt.rStep = get_nested_field(cfg, 'centerOpt.rStep', 0.10);

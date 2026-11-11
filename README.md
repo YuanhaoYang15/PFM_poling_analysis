@@ -31,6 +31,7 @@ PFM_poling_analysis/
   config/                         batch configs and config template
   functions/                      readers, extraction, center correction, plots
   docs/                           workflow notes
+  tests/                          seam, center recovery, regression, runner checks
   local/                          local setup templates and ignored batches
   main_generate_metadata_from_raw_folder.m
   main_plot_raw_heatmaps.m
@@ -111,12 +112,19 @@ a manifest under `results/raw_qc/`, without wrapping, smoothing, centering,
 normalization, or duty analysis.
 
 Review the generated `metadata/designs.csv` and set the radius and designed
-period entries before center picking. Then run:
+period entries. Then run:
 
 ```matlab
-main_pick_initial_centers_for_batch
 main_analyze_inphase_batch
 ```
+
+The default inphase workflow finds centers without manual picking. Inspect
+`results/inphase/figures/Batch_center_qc_<batch>_inphase*.png` and the flagged
+scan list printed at the end. A picked center, when available, is used as
+the starting point. Pick or correct centers only for flagged scans or scans
+whose stripes do not line up in the QC sheet, then use the rework workflow.
+`main_pick_initial_centers_for_batch` remains available for a manual first
+pass.
 
 For the phase workflow:
 
@@ -138,7 +146,9 @@ main_analyze_selected             % phase selected scans
 ```
 
 Selected-only analysis reprocesses selected scans, reuses existing results
-for the others, and regenerates device and batch summaries.
+for the others, and regenerates device and batch summaries and the center QC
+sheet. The selector marks center flags, shows their reasons, and suggests
+their row indices.
 
 ## AFM Topography Workflow
 
@@ -182,25 +192,47 @@ Interactive center picking normally writes initial centers to `centers/`.
 
 ## Center Handling
 
-Initial centers are manually approximated from radial domain lines. Center
-optimization uses period only:
+The inphase defaults are:
 
-```text
-candidate center
-  -> extract period over the fit radius range
-  -> compare with designed period
-  -> keep the center with the smallest period error metric
+```matlab
+cfg.centerInit.method = 'auto';
+cfg.centerInit.preferManual = true;
+cfg.centerOpt.method = 'coherence';
 ```
 
-The inphase optimizer reports scan and search progress to the console and
-to `results/inphase/progress.log`. When a best candidate lands within one
-search step of the first-pass boundary, it runs one smaller second pass
-biased toward the unexplored outward side. If that refinement also reaches
-the outward boundary, it records a warning that the manual center should be
-reviewed.
+Without a picked center, the search starts globally and aligns the inphase
+stripes to the design angular period. It then refines the center locally
+and applies a radial correction only when the signed period response is
+consistent. With a picked center it starts locally. Set
+`cfg.centerInit.preferManual = false` to use the global search even when
+picked centers exist. Set `cfg.centerInit.method = 'manual'` to require one.
+
+To select the legacy inphase period grid search, set these options in the
+active batch config:
+
+```matlab
+cfg.centerInit.method = 'manual';
+cfg.centerOpt.method = 'grid';
+```
+
+The grid uses `cfg.centerOpt.searchRange`, `searchStep`, and `edgeRefine`.
+With automatic initialization it can also start from a coherence center.
+Disabling `cfg.centerOpt.enable` fixes the picked center, or uses the
+automatic coherence center as is when no picked center is selected.
+
+Saved results record `centerSource`, `centerMethod`, and `centerQC`. The
+batch CSV includes the coherence, global peak ratio, signed median period
+error, flag, and reasons. Progress and flagged scans are also written to
+`results/inphase/progress.log`. Existing results are reused according to
+`cfg.run.skipExisting`; changing a method does not automatically recompute
+them. Older saved results remain readable and have empty center labels and
+unavailable QC numbers in the summary.
 
 Duty cycle is interpreted after center correction. It is not the center
-optimization objective.
+optimization objective. The phase workflow keeps its existing center
+handling. See [Center coherence](docs/CENTER_COHERENCE.md) for the method,
+configuration, QC interpretation, and measured changes from the previous
+pipeline.
 
 ## Repo Hygiene
 

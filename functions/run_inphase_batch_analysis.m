@@ -65,7 +65,7 @@ end
 
 log_line(logFile, sprintf('START batch=%s totalScans=%d selectedOnly=%d', ...
     batchName, totalScans, requestedSelectedOnly));
-fprintf('Inphase fixed-center processing | batch %s | %d scans\n', batchName, totalScans);
+fprintf('Inphase processing | batch %s | %d scans\n', batchName, totalScans);
 fprintf('Center mode: %s\n', requestedCenterMode);
 if requestedSelectedOnly
     fprintf('Mode: selected scans only (%d selected rows)\n', height(selectedTable));
@@ -131,17 +131,8 @@ for dd = 1:height(meta.devices)
             resultCounter = resultCounter + 1;
             allResults(resultCounter).result = result;
 
-            lambdaDesignAtR0 = cfgScan.design.periodRef.LambdaRef * ...
-                cfgScan.design.R0 / cfgScan.design.periodRef.Rref;
-            periodError = result.WG_period_mean - lambdaDesignAtR0;
-            allRows(end+1,:) = { ...
-                string(batchName), deviceID, designID, scanID, rawName, ...
-                result.centerInitial(1), result.centerInitial(2), ...
-                result.centerOptimized(1), result.centerOptimized(2), ...
-                result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
-                result.WG_period_mean, result.WG_period_std, periodError, ...
-                result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean, ...
-                string(result.signalField), string(result.dutyDefinition)}; %#ok<SAGROW>
+            allRows(end+1,:) = build_summary_row_local(batchName, deviceID, designID, ...
+                scanID, rawName, result, cfgScan); %#ok<SAGROW>
             continue;
         end
 
@@ -163,18 +154,8 @@ for dd = 1:height(meta.devices)
                 resultCounter = resultCounter + 1;
                 allResults(resultCounter).result = result;
 
-                lambdaDesignAtR0 = cfgScan.design.periodRef.LambdaRef * ...
-                    cfgScan.design.R0 / cfgScan.design.periodRef.Rref;
-                periodError = result.WG_period_mean - lambdaDesignAtR0;
-
-                allRows(end+1,:) = { ...
-                    string(batchName), deviceID, designID, scanID, rawName, ...
-                    result.centerInitial(1), result.centerInitial(2), ...
-                    result.centerOptimized(1), result.centerOptimized(2), ...
-                    result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
-                    result.WG_period_mean, result.WG_period_std, periodError, ...
-                    result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean, ...
-                    string(result.signalField), string(result.dutyDefinition)}; %#ok<SAGROW>
+                allRows(end+1,:) = build_summary_row_local(batchName, deviceID, designID, ...
+                    scanID, rawName, result, cfgScan); %#ok<SAGROW>
                 continue;
             end
         end
@@ -207,7 +188,7 @@ for dd = 1:height(meta.devices)
 
         report_progress(logFile, sprintf('SCAN %02d/%02d CENTER %s mode=%s', ...
             doneCounter + 1, totalScans, cfgScan.progress.scanLabel, requestedCenterMode));
-        [center0, center, centerOpt, oldResult] = resolve_inphase_center_local( ...
+        [center0, center, centerOpt, oldResult, centerSource, centerMethod, centerQC] = resolve_inphase_center_local( ...
             requestedCenterMode, deviceID, scanID, cfgScan, scanCfg, data);
 
         report_progress(logFile, sprintf('SCAN %02d/%02d EXTRACT %s center=[%.4f, %.4f]', ...
@@ -230,6 +211,9 @@ for dd = 1:height(meta.devices)
         result.centerOptimized = center;
         result.centerShift = center - center0;
         result.centerOpt = centerOpt;
+        result.centerSource = centerSource;
+        result.centerMethod = centerMethod;
+        result.centerQC = centerQC;
         result.radiusList = rList;
         result.before = analysis;
         result.after = analysis;
@@ -265,18 +249,8 @@ for dd = 1:height(meta.devices)
         resultCounter = resultCounter + 1;
         allResults(resultCounter).result = result;
 
-        lambdaDesignAtR0 = cfgScan.design.periodRef.LambdaRef * ...
-            cfgScan.design.R0 / cfgScan.design.periodRef.Rref;
-        periodError = result.WG_period_mean - lambdaDesignAtR0;
-
-        allRows(end+1,:) = { ...
-            string(batchName), deviceID, designID, scanID, rawName, ...
-            result.centerInitial(1), result.centerInitial(2), ...
-            result.centerOptimized(1), result.centerOptimized(2), ...
-            result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
-            result.WG_period_mean, result.WG_period_std, periodError, ...
-            result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean, ...
-            string(result.signalField), string(result.dutyDefinition)}; %#ok<SAGROW>
+        allRows(end+1,:) = build_summary_row_local(batchName, deviceID, designID, ...
+            scanID, rawName, result, cfgScan); %#ok<SAGROW>
 
         doneCounter = doneCounter + 1;
         msg = sprintf('DONE %02d/%02d %s scan %d raw=%s lowInphaseDuty=%.6f period=%.6f', ...
@@ -310,7 +284,9 @@ batchSummary = cell2table(allRows, 'VariableNames', { ...
     'centerShiftX_um','centerShiftY_um','centerShiftAbs_um', ...
     'WG_period_mean_um','WG_period_std_um','WG_period_error_um', ...
     'WG_duty_mean','WG_duty_std','WG_Nperiod_mean', ...
-    'signalField','dutyDefinition'});
+    'signalField','dutyDefinition', ...
+    'centerSource','centerMethod','centerCoherence','centerPeakRatio', ...
+    'centerPeriodError_um','centerFlag','centerFlagReason'});
 
 batchCfgOut = batchCfg;
 batchCfgOut.paths.processedRoot = processedRoot;
@@ -330,6 +306,28 @@ save_analysis_figure(figBatch, fullfile(figureRoot, sprintf('Batch_summary_%s_in
 figDuty = plot_batch_duty_notes(batchCfgOut, batchSummary);
 save_analysis_figure(figDuty, fullfile(figureRoot, sprintf('Batch_duty_notes_%s_inphase.png', batchName)), batchCfgOut);
 
+qcResults = struct([]);
+for kk = 1:numel(allResults)
+    qcResults = append_struct_result_local(qcResults, allResults(kk).result);
+end
+figsQC = plot_center_qc_sheet(batchCfgOut, qcResults);
+for pp = 1:numel(figsQC)
+    if isscalar(figsQC)
+        qcName = sprintf('Batch_center_qc_%s_inphase.png', batchName);
+    else
+        qcName = sprintf('Batch_center_qc_%s_inphase_p%d.png', batchName, pp);
+    end
+    save_analysis_figure(figsQC(pp), fullfile(figureRoot, qcName), batchCfgOut);
+end
+flagged = find(batchSummary.centerFlag);
+fprintf('Center QC: %d flagged scans.\n', numel(flagged));
+for kk = flagged(:).'
+    report_progress(logFile, sprintf('CENTER_QC FLAG index=%d raw=%s reason=%s', ...
+        kk, char(batchSummary.rawName(kk)), char(batchSummary.centerFlagReason(kk))));
+end
+fprintf(['Review Batch_center_qc_%s_inphase*.png; for flagged or incorrect centers run ', ...
+    'main_select_scans_for_rework -> main_pick_centers_selected -> main_analyze_inphase_selected.\n'], batchName);
+
 log_line(logFile, sprintf('ALL_DONE batch=%s scans=%d processedRoot=%s figures=%s', ...
     batchName, doneCounter, processedRoot, figureRoot));
 fprintf('ALL_DONE batch=%s scans=%d\n', batchName, doneCounter);
@@ -347,8 +345,11 @@ if ~isfile(rawFile)
 end
 end
 
-function [center0, center, centerOpt, oldResult] = resolve_inphase_center_local( ...
+function [center0, center, centerOpt, oldResult, centerSource, centerMethod, centerQC] = resolve_inphase_center_local( ...
         centerMode, deviceID, scanID, cfgScan, scanCfg, data)
+centerSource = 'manual';
+centerMethod = 'fixed';
+centerQC = empty_center_qc_local();
 switch lower(string(centerMode))
     case "phase_optimized"
         oldResultPath = fullfile(cfgScan.paths.processedRoot, char(deviceID), ...
@@ -366,13 +367,55 @@ switch lower(string(centerMode))
             'sourceResult', oldResultPath);
 
     case "inphase_optimized"
-        center0 = resolve_initial_center(cfgScan, scanCfg);
-        if cfgScan.centerOpt.enable
-            centerOpt = optimize_center_by_inphase_period(data, center0, cfgScan);
-            center = centerOpt.centerBest;
-        else
+        switch lower(string(cfgScan.centerInit.method))
+            case "manual"
+                center0 = resolve_initial_center(cfgScan, scanCfg);
+            case "auto"
+                center0 = [];
+                if cfgScan.centerInit.preferManual
+                    [center0, ~] = find_initial_center(cfgScan, scanCfg);
+                end
+            otherwise
+                error('Unknown cfg.centerInit.method: %s', cfgScan.centerInit.method);
+        end
+        if isempty(center0)
+            centerSource = 'auto';
+        end
+        if ~cfgScan.centerOpt.enable
+            if isempty(center0)
+                [center0, search] = find_center_by_stripe_coherence(data, cfgScan, []);
+            else
+                search = struct('usedGlobal', false, 'peakRatio', NaN, 'hitWindowEdge', false);
+            end
             center = center0;
             centerOpt = struct('mode', 'fixed_initial_center', 'centerBest', center);
+            centerQC = fixed_center_qc_local(data, center, search, cfgScan);
+        else
+            centerMethod = char(lower(string(cfgScan.centerOpt.method)));
+            switch centerMethod
+                case 'coherence'
+                    centerOpt = optimize_center_by_inphase_coherence(data, center0, cfgScan);
+                    center0 = centerOpt.centerInitial;
+                    centerQC = centerOpt.qc;
+                case 'grid'
+                    if isempty(center0)
+                        center0 = find_center_by_stripe_coherence(data, cfgScan, []);
+                    end
+                    centerOpt = optimize_center_by_inphase_period(data, center0, cfgScan);
+                    centerQC = empty_center_qc_local();
+                    reason = string(centerOpt.boundaryWarning);
+                    if strlength(reason) > 0
+                        centerQC.flag = true;
+                        centerQC.reasons = reason;
+                    end
+                    cfgFixed = cfgScan;
+                    cfgFixed.centerOpt.radialPolish.enable = false;
+                    [~, periodInfo] = polish_center_radial_period(data, centerOpt.centerBest, cfgFixed);
+                    centerQC.finalPeriodError_um = periodInfo.finalPeriodError_um;
+                otherwise
+                    error('Unknown cfg.centerOpt.method: %s', cfgScan.centerOpt.method);
+            end
+            center = centerOpt.centerBest;
         end
         oldResult = struct();
 
@@ -421,4 +464,63 @@ for kk = 1:numel(allFields)
         [S.(f)] = deal([]);
     end
 end
+end
+
+function row = build_summary_row_local(batchName, deviceID, designID, scanID, rawName, result, cfgScan)
+periodError = result.WG_period_mean - design_period(cfgScan.design.R0, cfgScan);
+qc = getfield_or(result, 'centerQC', []);
+if isempty(qc)
+    qc = empty_center_qc_local();
+end
+source = string(getfield_or(result, 'centerSource', ''));
+method = string(getfield_or(result, 'centerMethod', ''));
+row = {string(batchName), deviceID, designID, scanID, rawName, ...
+    result.centerInitial(1), result.centerInitial(2), ...
+    result.centerOptimized(1), result.centerOptimized(2), ...
+    result.centerShift(1), result.centerShift(2), hypot(result.centerShift(1), result.centerShift(2)), ...
+    result.WG_period_mean, result.WG_period_std, periodError, ...
+    result.WG_duty_mean, result.WG_duty_std, result.WG_Nperiod_mean, ...
+    string(result.signalField), string(result.dutyDefinition), source, method, ...
+    qc.finalCoherence, qc.peakRatio, qc.finalPeriodError_um, logical(qc.flag), ...
+    strjoin(string(qc.reasons(:).'), '; ')};
+end
+
+function qc = empty_center_qc_local()
+qc = struct('flag', false, 'reasons', strings(0, 1), 'notes', strings(0, 1), ...
+    'finalCoherence', NaN, 'peakRatio', NaN, 'finalPeriodError_um', NaN);
+end
+
+function qc = fixed_center_qc_local(data, center, search, cfg)
+cfgFixed = cfg;
+cfgFixed.centerOpt.radialPolish.enable = false;
+[~, periodInfo] = polish_center_radial_period(data, center, cfgFixed);
+rRange = cfg.centerOpt.coherence.radiusRange;
+if isempty(rRange)
+    rRange = [cfg.radius.rMin, cfg.radius.rMax];
+end
+N = 2*pi*cfg.design.periodRef.Rref / cfg.design.periodRef.LambdaRef;
+J = center_stripe_coherence(center, data.X, data.Y, data.inphase, N, ...
+    sort(rRange), cfg.centerOpt.coherence.taper_um, cfg.centerOpt.coherence.minPixels);
+qc = empty_center_qc_local();
+qc.finalCoherence = J;
+qc.peakRatio = search.peakRatio;
+qc.finalPeriodError_um = periodInfo.finalPeriodError_um;
+if search.usedGlobal && search.peakRatio < cfg.centerOpt.coherence.minPeakRatio
+    qc.reasons(end+1, 1) = sprintf('Global peak ratio %.4g is below %.4g.', ...
+        search.peakRatio, cfg.centerOpt.coherence.minPeakRatio);
+end
+if J < cfg.centerOpt.coherence.minCoherence
+    qc.reasons(end+1, 1) = sprintf('Final stripe coherence %.4g is below %.4g.', ...
+        J, cfg.centerOpt.coherence.minCoherence);
+end
+if search.hitWindowEdge
+    qc.reasons(end+1, 1) = "Local coherence search still reaches its window edge.";
+end
+if periodInfo.noValidCandidate || ~isfinite(periodInfo.finalPeriodError_um)
+    qc.reasons(end+1, 1) = "Final period evaluation is not valid.";
+elseif abs(periodInfo.finalPeriodError_um) > cfg.centerOpt.coherence.maxFinalPeriodError_um
+    qc.reasons(end+1, 1) = sprintf('Final signed median period error %+.5g um exceeds %.5g um.', ...
+        periodInfo.finalPeriodError_um, cfg.centerOpt.coherence.maxFinalPeriodError_um);
+end
+qc.flag = ~isempty(qc.reasons);
 end

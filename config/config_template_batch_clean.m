@@ -115,6 +115,10 @@ cfg.extract.verbose = true;
 %% =========================
 %  9. Center picking
 % =========================
+% Inphase: no picking is needed when no saved center exists. A saved center
+% is preferred as a local-search start; set preferManual=false to ignore it.
+cfg.centerInit.method = 'auto';          % 'auto' | 'manual' (requires a center)
+cfg.centerInit.preferManual = true;
 cfg.centerPicker.skipExisting = true;
 cfg.centerPicker.method = 'manual_radial_lines';
 cfg.centerPicker.displaySignal = 'phase';  % 'phase' or 'inphase'
@@ -123,8 +127,10 @@ cfg.centerPicker.displaySignal = 'phase';  % 'phase' or 'inphase'
 %  10. Center optimization
 % =========================
 cfg.centerOpt.enable = true;
+cfg.centerOpt.method = 'coherence';      % 'coherence' | 'grid' (legacy)
 
-% Search grid around the manually picked radial-line center.
+% Legacy grid settings. To recover the old inphase path use method='grid'
+% together with centerInit.method='manual'.
 cfg.centerOpt.searchRange = 1.0;        % um, +/- range in x and y
 cfg.centerOpt.searchStep  = 0.05;       % um
 
@@ -143,7 +149,31 @@ cfg.centerOpt.minNPeriods = 2;
 cfg.centerOpt.maxPeriodStd_um = Inf;
 cfg.centerOpt.maxAbsPeriodError_um = Inf;
 
-% If a best center reaches the search edge, refine once with a smaller
+% Stripe harmonic search: global only when no start center was supplied.
+cfg.centerOpt.coherence.radiusRange = []; % [] = [rMin, rMax]
+cfg.centerOpt.coherence.taper_um = 0.5;
+cfg.centerOpt.coherence.minPixels = 2000;
+cfg.centerOpt.coherence.localRange_um = 5.0; % 3.0 after the global search
+cfg.centerOpt.coherence.coarseStep_um = 0.5;
+cfg.centerOpt.coherence.fineRange_um = 0.75;
+cfg.centerOpt.coherence.fineStep_um = 0.125;
+cfg.centerOpt.coherence.globalDistanceHalfRange_um = []; % half image diagonal
+cfg.centerOpt.coherence.globalDistanceStep_um = 0.5;
+cfg.centerOpt.coherence.globalTangentialStep_um = 1.75;
+cfg.centerOpt.coherence.globalDecimate = 2;
+cfg.centerOpt.coherence.minPeakRatio = 1.2;
+cfg.centerOpt.coherence.minCoherence = 0.45;
+cfg.centerOpt.coherence.maxFinalPeriodError_um = 0.03;
+
+% Robust radial period zero crossing; rejected adjustments remain QC notes.
+cfg.centerOpt.radialPolish.enable = true;
+cfg.centerOpt.radialPolish.range_um = 0.6;
+cfg.centerOpt.radialPolish.step_um = 0.05;
+cfg.centerOpt.radialPolish.minSamples = 5;
+cfg.centerOpt.radialPolish.agreeTolerance_um = 0.10;
+cfg.centerOpt.radialPolish.minAgreeFraction = 0.5;
+
+% Legacy grid: if a best center reaches the search edge, refine once with a smaller
 % search box biased toward the unexplored outward side.
 cfg.centerOpt.edgeRefine.enable = true;
 cfg.centerOpt.edgeRefine.maxPasses = 2;

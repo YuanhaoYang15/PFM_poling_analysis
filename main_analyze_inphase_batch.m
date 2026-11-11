@@ -1,7 +1,7 @@
 %% Analyze the active PFM poling batch from LS_PR_Inphase
 %
-% This uses picked initial centers and refines them by inphase period unless
-% centerMode is changed before running the inphase batch runner.
+% Default: find centers by stripe coherence; picked centers are optional.
+% Review the batch center QC sheet and flagged scans after analysis.
 
 clear; clc; close all;
 

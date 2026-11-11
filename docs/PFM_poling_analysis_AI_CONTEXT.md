@@ -44,6 +44,9 @@ are not part of the public layout.
 
 `configure_local_batch_paths` sets the batch-local path tree. Batch configs
 should call it after `cfg.paths.projectRoot` and `cfg.batchName` are set.
+`tests/` contains seam, synthetic-center, real-data regression, and inphase
+runner checks. The center method and user settings are documented in
+`CENTER_COHERENCE.md`.
 
 ## Signal roles
 
@@ -119,16 +122,21 @@ For the inphase-first workflow:
 
 ```matlab
 main_generate_metadata_from_raw_folder
-main_pick_initial_centers_for_batch
 main_analyze_inphase_batch
 ```
 
-Before center picking, review the generated batch metadata and set radius
+Before analysis, review the generated batch metadata and set radius
 and period parameters in:
 
 ```text
 local/batches/<batchName>/metadata/designs.csv
 ```
+
+Manual center picking is optional for the inphase workflow. Review
+`results/inphase/figures/Batch_center_qc_<batch>_inphase*.png` and the flagged
+scan list, then select and pick only flagged or visibly wrong scans for
+reanalysis. `main_pick_initial_centers_for_batch` remains available for a
+manual first pass.
 
 Run the phase workflow only when a phase result is needed:
 
@@ -252,43 +260,43 @@ their own uppercase parser pattern in the batch config.
 
 ## Center picking and optimization
 
-Initial centers are picked manually, normally from radial domain lines.
-`cfg.centerPicker.displaySignal` may be `phase` or `inphase`.
-
-Center optimization must use period error only. Duty is measured after
-center correction.
-
-The inphase optimizer currently has an edge refinement strategy:
-
-```text
-pass 1:
-  search around the manual center
-
-if best x or y offset is within one search step of the pass-1 boundary:
-  pass 2:
-    anchor at the pass-1 best center
-    use a smaller search range
-    bias the touched axis toward the unexplored outward side
-
-if pass 2 still touches the outward side:
-  warn that the manual center should be reviewed
-```
-
-Default refinement parameters are stored under:
+The default inphase settings are:
 
 ```matlab
-cfg.centerOpt.edgeRefine.enable = true;
-cfg.centerOpt.edgeRefine.maxPasses = 2;
-cfg.centerOpt.edgeRefine.rangeScale = 0.5;
-cfg.centerOpt.edgeRefine.outwardFraction = 0.75;
-cfg.centerOpt.edgeRefine.boundaryStepTolerance = 1.0;
+cfg.centerInit.method = 'auto';
+cfg.centerInit.preferManual = true;
+cfg.centerOpt.method = 'coherence';
 ```
 
-The final `centerShift` is always reported relative to the original manual
-center. Per-pass optimizer details are saved under `result.centerOpt.passes`.
+An available picked center starts a local coherence search. Otherwise a
+global search finds the design angular harmonic, followed by local search
+and a radial signed-period zero-crossing correction. Duty is measured only
+after center correction. `centerInit.preferManual = false` forces the global
+path; `centerInit.method = 'manual'` requires a picked center. Manual lookup
+priority is scan metadata, batch center table, then legacy device table.
+
+Select the legacy grid with `centerOpt.method = 'grid'` and
+`centerInit.method = 'manual'`. Its `searchRange`, `searchStep`, and
+`edgeRefine` settings retain their existing meaning. `centerOpt.enable =
+false` uses the selected initial center as is, finding one by coherence if
+needed. The phase workflow and `phase_optimized` center mode retain their
+existing behavior. Manual picking uses radial lines;
+`cfg.centerPicker.displaySignal` may be `phase` or `inphase`.
+
+Results record `centerSource` (`manual` or `auto`), `centerMethod`
+(`coherence`, `grid`, or `fixed`), and `centerQC`. The batch CSV appends
+coherence, global peak ratio, signed median period error, flag, and reason
+columns. Older saved results get empty labels, NaN numbers, and no flag;
+`skipExisting` continues to control reuse. For a click-free coherence run,
+`centerInitial` is the coherence center before radial polish; `centerShift`
+is relative to that center. For a picked start it is relative to the picked
+center.
 
 The inphase batch runner reports current file, stage, and center search
-progress to the console and batch `results/inphase/progress.log`.
+progress to the console and batch `results/inphase/progress.log`, including
+`CENTER_QC FLAG` entries. It saves a paginated center QC sheet with unwrapped
+inphase stripes, waveguide and analysis bounds, and fitted design lines.
+See `CENTER_COHERENCE.md` for flag thresholds and options.
 
 ## Selected-scan rework
 
@@ -305,6 +313,9 @@ summary, then writes:
 local/batches/<batchName>/selected_scans/selected_scans.csv
 ```
 
+When center flags are available, the listing marks them, prints their
+reasons, and suggests their indices.
+
 Then run:
 
 ```matlab
@@ -314,7 +325,8 @@ main_analyze_selected             % selected phase reanalysis
 ```
 
 Selected-only analysis reprocesses selected scans, reuses existing results
-for non-selected scans, and rebuilds summaries.
+for non-selected scans, and rebuilds summaries and the center QC sheet.
+Selected `centerSearchRange_um` also sets the coherence local search range.
 
 ## Privacy and Git hygiene
 
