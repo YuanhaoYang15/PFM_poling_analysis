@@ -95,6 +95,21 @@ valid = isfinite(zq) & ...
 
 [i1, i2] = longest_true_run_local(valid);
 
+if ~all(valid) && valid(1) && valid(end)
+    firstEnd = find(~valid, 1, 'first') - 1;
+    lastStart = find(~valid, 1, 'last') + 1;
+    idx = [lastStart:numel(valid), 2:firstEnd];
+    if numel(idx) >= i2 - i1 + 1
+        % Keep the +pi sample once, then continue on the next revolution.
+        theta = [theta(lastStart:end), theta(2:firstEnd) + 2*pi];
+        xq = xq(idx);
+        yq = yq(idx);
+        zq = zq(idx);
+        i1 = 1;
+        i2 = numel(idx);
+    end
+end
+
 trace = empty_trace_local(r_um);
 if isempty(i1); return; end
 

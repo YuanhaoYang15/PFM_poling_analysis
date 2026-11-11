@@ -187,6 +187,22 @@ function trace = samplePhaseAlongArc_legacy(phase_deg, x_um, y_um, xc_um, yc_um,
 
     [i1, i2] = longestTrueRun_legacy(valid);
 
+    if ~all(valid) && valid(1) && valid(end)
+        firstEnd = find(~valid, 1, 'first') - 1;
+        lastStart = find(~valid, 1, 'last') + 1;
+        idx = [lastStart:numel(valid), 2:firstEnd];
+        if numel(idx) >= i2 - i1 + 1
+            % Keep the +pi sample once, then continue on the next revolution.
+            theta = [theta(lastStart:end), theta(2:firstEnd) + 2*pi];
+            xq = xq(idx);
+            yq = yq(idx);
+            Cq = Cq(idx);
+            Sq = Sq(idx);
+            i1 = 1;
+            i2 = numel(idx);
+        end
+    end
+
     trace = emptyTrace_legacy(r_um);
     if isempty(i1), return; end
 

@@ -44,6 +44,36 @@ cfg.centerOpt.edgeRefine.outwardFraction = get_nested_field(cfg, 'centerOpt.edge
 cfg.centerOpt.edgeRefine.boundaryStepTolerance = get_nested_field( ...
     cfg, 'centerOpt.edgeRefine.boundaryStepTolerance', 1.0);
 
+if ~isfield(cfg.centerOpt, 'coherence'); cfg.centerOpt.coherence = struct(); end
+cfg.centerOpt.coherence.radiusRange = get_nested_field(cfg, 'centerOpt.coherence.radiusRange', []);
+cfg.centerOpt.coherence.taper_um = get_nested_field(cfg, 'centerOpt.coherence.taper_um', 0.5);
+cfg.centerOpt.coherence.minPixels = get_nested_field(cfg, 'centerOpt.coherence.minPixels', 2000);
+cfg.centerOpt.coherence.localRange_um = get_nested_field(cfg, 'centerOpt.coherence.localRange_um', 5.0);
+cfg.centerOpt.coherence.coarseStep_um = get_nested_field(cfg, 'centerOpt.coherence.coarseStep_um', 0.5);
+cfg.centerOpt.coherence.fineRange_um = get_nested_field(cfg, 'centerOpt.coherence.fineRange_um', 0.75);
+cfg.centerOpt.coherence.fineStep_um = get_nested_field(cfg, 'centerOpt.coherence.fineStep_um', 0.125);
+cfg.centerOpt.coherence.globalDistanceHalfRange_um = get_nested_field( ...
+    cfg, 'centerOpt.coherence.globalDistanceHalfRange_um', []);
+cfg.centerOpt.coherence.globalDistanceStep_um = get_nested_field( ...
+    cfg, 'centerOpt.coherence.globalDistanceStep_um', 0.5);
+cfg.centerOpt.coherence.globalTangentialStep_um = get_nested_field( ...
+    cfg, 'centerOpt.coherence.globalTangentialStep_um', 1.75);
+cfg.centerOpt.coherence.globalDecimate = get_nested_field(cfg, 'centerOpt.coherence.globalDecimate', 2);
+cfg.centerOpt.coherence.minPeakRatio = get_nested_field(cfg, 'centerOpt.coherence.minPeakRatio', 1.2);
+cfg.centerOpt.coherence.minCoherence = get_nested_field(cfg, 'centerOpt.coherence.minCoherence', 0.45);
+cfg.centerOpt.coherence.maxFinalPeriodError_um = get_nested_field( ...
+    cfg, 'centerOpt.coherence.maxFinalPeriodError_um', 0.03);
+
+if ~isfield(cfg.centerOpt, 'radialPolish'); cfg.centerOpt.radialPolish = struct(); end
+cfg.centerOpt.radialPolish.enable = get_nested_field(cfg, 'centerOpt.radialPolish.enable', true);
+cfg.centerOpt.radialPolish.range_um = get_nested_field(cfg, 'centerOpt.radialPolish.range_um', 0.6);
+cfg.centerOpt.radialPolish.step_um = get_nested_field(cfg, 'centerOpt.radialPolish.step_um', 0.05);
+cfg.centerOpt.radialPolish.minSamples = get_nested_field(cfg, 'centerOpt.radialPolish.minSamples', 5);
+cfg.centerOpt.radialPolish.agreeTolerance_um = get_nested_field( ...
+    cfg, 'centerOpt.radialPolish.agreeTolerance_um', 0.10);
+cfg.centerOpt.radialPolish.minAgreeFraction = get_nested_field( ...
+    cfg, 'centerOpt.radialPolish.minAgreeFraction', 0.5);
+
 if ~isfield(cfg, 'arc'); cfg.arc = struct(); end
 cfg.arc.thetaRange = get_nested_field(cfg, 'arc.thetaRange', []);
 cfg.arc.nTheta = get_nested_field(cfg, 'arc.nTheta', 8000);

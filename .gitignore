@@ -81,3 +81,8 @@ local/selected_scans.csv
 # Logs
 # =========================
 *.log
+
+# =========================
+# Local agent collaboration records
+# =========================
+.collab/
